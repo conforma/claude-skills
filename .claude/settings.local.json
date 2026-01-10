@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./run.sh:*)",
+      "Bash(bash:*)",
+      "Bash(cosign download attestation:*)",
+      "Bash(jq:*)",
+      "Bash(ec oci blob:*)",
+      "Bash(cosign download sbom:*)",
+      "Bash(ec test:*)",
+      "Bash(make test:*)",
+      "Bash(grep:*)",
+      "Bash(python3:*)",
+      "Bash(chmod:*)",
+      "Bash(/Users/jstuart/Documents/repos/ec-debugging/summarize_violations.py /Users/jstuart/Documents/repos/ec-debugging/logs/managed-vrqch-verify-conforma.log)",
+      "Bash(/Users/jstuart/Documents/repos/ec-debugging/summarize_violations.py:*)",
+      "Bash(curl:*)",
+      "Bash(ln:*)",
+      "Bash(conftest pull:*)",
+      "Bash(wc:*)",
+      "Bash(tree:*)",
+      "Bash(find:*)"
+    ]
+  }
+}
