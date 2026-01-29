@@ -19,7 +19,9 @@
       "Bash(conftest pull:*)",
       "Bash(wc:*)",
       "Bash(tree:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(opa fmt:*)",
+      "Bash(opa check:*)"
     ]
   }
 }
