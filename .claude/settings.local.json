@@ -20,7 +20,8 @@
       "Bash(wc:*)",
       "Bash(tree:*)",
       "Bash(find:*)",
-      "Bash(opa fmt:*)"
+      "Bash(opa fmt:*)",
+      "Bash(opa check:*)"
     ]
   }
 }

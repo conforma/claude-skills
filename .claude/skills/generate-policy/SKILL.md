@@ -25,11 +25,23 @@ Before writing SBOM-related policy rules, always consult:
   - Download URL locations
   - Hermeto marker detection
 
+- [Rego Patterns Reference](reference/rego-patterns.md) - Rego v1 syntax and patterns including:
+  - Import statements and syntax requirements
+  - Metadata format (YAML comments)
+  - Input/data access patterns
+  - Result construction
+  - Available built-in functions
+
 ### JSON Schemas
 
 Full schema definitions for validation:
 - [SPDX 2.3 Schema](reference/spdx-schema.json)
 - [CycloneDX 1.5 Schema](reference/cyclonedx-schema.json)
+
+### Templates
+
+Starter templates for new rules:
+- [Rule Template](templates/rule.rego) - Standalone Rego v1 rule template
 
 ## SBOM Format Quick Reference
 
@@ -43,13 +55,35 @@ Full schema definitions for validation:
 - Components: `att.statement.predicate.components`
 - PURL: `component.purl` (direct field)
 
-## Policy Rule Template
+## Rego v1 Quick Reference
+
+### Required Import
+
+```rego
+import rego.v1
+```
+
+### Metadata Format
+
+```rego
+# METADATA
+# title: Rule Title
+# description: >-
+#   What the rule checks.
+# custom:
+#   short_name: rule_name
+#   failure_msg: "Error: %s"
+#   solution: >-
+#     How to fix violations.
+```
+
+### Standalone Rule Template
+
+Rules should be standalone (no Conforma library dependencies):
 
 ```rego
 package policy.release.<rule_name>
 
-import data.lib
-import data.lib.sbom
 import rego.v1
 
 # METADATA
@@ -58,38 +92,57 @@ import rego.v1
 #   <Description of what the rule checks>
 # custom:
 #   short_name: <short_name>
-#   failure_msg: <Message template with %s placeholders>
+#   failure_msg: "<Message template with %s placeholders>"
 #   solution: >-
 #     <How to fix violations>
-
 deny contains result if {
-    some sbom_data in sbom.cyclonedx_sboms
-    some component in sbom_data.components
+    # Access CycloneDX SBOM
+    some att in input.attestations
+    att.statement.predicateType == "https://cyclonedx.org/bom"
+    sbom := att.statement.predicate
 
     # Your validation logic here
-    <condition>
+    some component in sbom.components
+    # <condition>
 
-    result := lib.result_helper(rego.metadata.chain(), [<args>])
+    result := {
+        "code": "<package>.<short_name>",
+        "msg": sprintf("<message>", [<args>]),
+        "severity": "failure",
+        "term": component.purl,
+    }
 }
 ```
 
-## Using lib.sbom Helpers
-
-The `lib.sbom` package provides format-agnostic helpers:
+## Key Built-in Functions
 
 ```rego
-import data.lib.sbom
+# String formatting
+sprintf("Package %s from %s", [name, url])
 
-# All SBOMs regardless of format
-all := sbom.all_sboms
+# Regex matching
+regex.match(`^https://allowed\.com/`, url)
 
-# Format-specific
-cdx := sbom.cyclonedx_sboms
-spdx := sbom.spdx_sboms
+# Safe object access
+object.get(obj, "key", default_value)
 
-# Parse image ref from OCI purl
-ref := sbom.image_ref_from_purl(purl)
+# PURL parsing (EC built-in)
+parsed := ec.purl.parse(purl)
 
-# Check URL patterns
-matches := sbom.url_matches_any_pattern(url, patterns)
+# Membership testing
+"value" in collection
+```
+
+## Iteration Patterns
+
+```rego
+# Iterate with some
+some component in sbom.components
+
+# Iterate with index
+some index, component in sbom.components
+
+# Filter and iterate
+some ref in component.externalReferences
+ref.type == "distribution"
 ```

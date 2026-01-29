@@ -251,31 +251,91 @@ Policy validation uses these JSON schema definitions (available in this director
 - [spdx-schema.json](spdx-schema.json) - SPDX 2.3 JSON schema
 - [cyclonedx-schema.json](cyclonedx-schema.json) - CycloneDX 1.5 JSON schema
 
-## Common Rego Patterns
+## Common Rego Patterns (Pure Rego)
 
-### Iterate over all SBOM items (format-agnostic)
+### Access CycloneDX SBOMs
 
 ```rego
-import data.lib.sbom
+# Filter attestations for CycloneDX SBOMs
+some att in input.attestations
+att.statement.predicateType == "https://cyclonedx.org/bom"
+sbom := att.statement.predicate
 
-# Get all SBOMs regardless of format
-all_sboms := sbom.all_sboms
-
-# Format-specific
-cyclonedx_sboms := sbom.cyclonedx_sboms
-spdx_sboms := sbom.spdx_sboms
+# Iterate over components
+some component in sbom.components
+purl := component.purl
 ```
 
-### Parse and compare PURLs
+### Access SPDX SBOMs
 
 ```rego
-# Parse a PURL
+# Filter attestations for SPDX SBOMs
+some att in input.attestations
+att.statement.predicateType == "https://spdx.dev/Document"
+sbom := att.statement.predicate
+
+# Iterate over packages
+some pkg in sbom.packages
+
+# Extract PURL from externalRefs
+some ref in pkg.externalRefs
+ref.referenceType == "purl"
+purl := ref.referenceLocator
+```
+
+### Check for Hermeto Marker (CycloneDX)
+
+```rego
+# Find components fetched by Hermeto
+some component in sbom.components
+some prop in component.properties
+prop.name == "hermeto:found_by"
+```
+
+### Check for Hermeto Marker (SPDX)
+
+```rego
+# Find packages with Hermeto annotations
+some pkg in sbom.packages
+some ann in pkg.annotations
+contains(ann.comment, "hermeto:found_by")
+```
+
+### Get Distribution URL (CycloneDX)
+
+```rego
+# Get download URL from externalReferences
+some ref in component.externalReferences
+ref.type == "distribution"
+url := ref.url
+```
+
+### Parse and Compare PURLs
+
+```rego
+# Parse a PURL (EC built-in)
 parsed := ec.purl.parse(raw_purl)
 # Returns: { type, namespace, name, version, qualifiers, subpath }
 
 # Check if PURL is valid
 is_valid := ec.purl.is_valid(raw_purl)
 
-# Get image reference from OCI PURL
-image_ref := sbom.image_ref_from_purl(raw_purl)
+# Access parsed fields
+purl_type := parsed.type        # e.g., "golang", "rpm", "npm"
+purl_name := parsed.name        # e.g., "package-name"
+purl_version := parsed.version  # e.g., "v1.0.0"
+```
+
+### Match URL Against Patterns
+
+```rego
+# Check if URL matches any allowed pattern
+_url_allowed(url, patterns) if {
+    some pattern in patterns
+    regex.match(pattern, url)
+}
+
+# Usage
+allowed_patterns := ["^https://proxy\\.golang\\.org/", "^https://registry\\.npmjs\\.org/"]
+_url_allowed(distribution_url, allowed_patterns)
 ```
