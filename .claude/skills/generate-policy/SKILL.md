@@ -1,29 +1,23 @@
 ---
 name: generate-policy
-description: Generate Enterprise Contract policy rules for SBOM validation. Use when creating new Rego rules that validate SPDX or CycloneDX SBOM attestations.
+description: Generate standalone Enterprise Contract policy rules in Rego v1. Use when creating new rules that validate attestations, SBOMs, provenance, or other supply chain data.
 allowed-tools: Read, Bash, Glob, Grep, Task, Write, Edit
 ---
 
 # Generate Policy Skill
 
-Use this skill to generate Enterprise Contract policy rules that validate SBOM attestations.
+Use this skill to generate standalone Enterprise Contract (EC) policy rules in Rego v1.
 
 ## When to Use
 
-- Creating new policy rules for SBOM validation
-- Writing Rego rules that traverse SPDX or CycloneDX data
-- Implementing package checks, license validation, or provenance rules
-- Understanding SBOM structure for policy development
+- Creating new EC policy rules
+- Writing Rego rules that validate attestations
+- Implementing validation checks for builds, images, or supply chain data
+- Understanding attestation structures for policy development
 
 ## Reference Documents
 
-Before writing SBOM-related policy rules, always consult:
-
-- [SBOM Structure Reference](reference/sbom-structure.md) - Exact paths for SPDX and CycloneDX formats including:
-  - Package/component locations
-  - PURL extraction
-  - Download URL locations
-  - Hermeto marker detection
+### Core References
 
 - [Rego Patterns Reference](reference/rego-patterns.md) - Rego v1 syntax and patterns including:
   - Import statements and syntax requirements
@@ -32,28 +26,23 @@ Before writing SBOM-related policy rules, always consult:
   - Result construction
   - Available built-in functions
 
-### JSON Schemas
-
-Full schema definitions for validation:
-- [SPDX 2.3 Schema](reference/spdx-schema.json)
-- [CycloneDX 1.5 Schema](reference/cyclonedx-schema.json)
-
 ### Templates
 
 Starter templates for new rules:
-- [Rule Template](templates/rule.rego) - Standalone Rego v1 rule template
+- [Rule Template](templates/rule.rego) - Generic standalone Rego v1 rule template
+- [SBOM Rule Template](templates/sbom-rule.rego) - Example for CycloneDX SBOM validation
 
-## SBOM Format Quick Reference
+### Domain-Specific References
 
-### SPDX
-- Predicate type: `https://spdx.dev/Document`
-- Packages: `att.statement.predicate.packages`
-- PURL: `pkg.externalRefs[].referenceLocator` where `referenceType == "purl"`
+#### SBOM Validation
 
-### CycloneDX
-- Predicate type: `https://cyclonedx.org/bom`
-- Components: `att.statement.predicate.components`
-- PURL: `component.purl` (direct field)
+For rules that validate Software Bill of Materials:
+
+- [SBOM Structure Reference](reference/sbom-structure.md) - Exact paths for SPDX and CycloneDX formats
+- [SPDX 2.3 Schema](reference/spdx-schema.json) - Full JSON schema
+- [CycloneDX 1.5 Schema](reference/cyclonedx-schema.json) - Full JSON schema
+
+---
 
 ## Rego v1 Quick Reference
 
@@ -64,6 +53,8 @@ import rego.v1
 ```
 
 ### Metadata Format
+
+Every rule must have metadata:
 
 ```rego
 # METADATA
@@ -96,53 +87,76 @@ import rego.v1
 #   solution: >-
 #     <How to fix violations>
 deny contains result if {
-    # Access CycloneDX SBOM
+    # Access attestations
     some att in input.attestations
-    att.statement.predicateType == "https://cyclonedx.org/bom"
-    sbom := att.statement.predicate
+
+    # Filter by predicate type
+    att.statement.predicateType == "<predicate_type>"
+    data := att.statement.predicate
 
     # Your validation logic here
-    some component in sbom.components
-    # <condition>
+    # <conditions>
 
     result := {
         "code": "<package>.<short_name>",
         "msg": sprintf("<message>", [<args>]),
         "severity": "failure",
-        "term": component.purl,
+        "term": <identifier>,
     }
 }
 ```
 
-## Key Built-in Functions
+### Key Built-in Functions
 
 ```rego
 # String formatting
-sprintf("Package %s from %s", [name, url])
+sprintf("Value %s from %s", [val1, val2])
 
-# Regex matching
+# Regex matching (use raw strings)
 regex.match(`^https://allowed\.com/`, url)
 
-# Safe object access
+# Safe object access with default
 object.get(obj, "key", default_value)
-
-# PURL parsing (EC built-in)
-parsed := ec.purl.parse(purl)
 
 # Membership testing
 "value" in collection
+
+# PURL parsing (EC built-in)
+parsed := ec.purl.parse(purl)
 ```
 
-## Iteration Patterns
+### Iteration Patterns
 
 ```rego
-# Iterate with some
-some component in sbom.components
+# Iterate over collection
+some item in collection
 
 # Iterate with index
-some index, component in sbom.components
+some index, item in collection
 
-# Filter and iterate
-some ref in component.externalReferences
-ref.type == "distribution"
+# Filter while iterating
+some item in collection
+item.type == "expected"
 ```
+
+---
+
+## Domain Quick References
+
+### SBOM Validation
+
+#### CycloneDX
+- Predicate type: `https://cyclonedx.org/bom`
+- Components: `predicate.components`
+- PURL: `component.purl`
+- Distribution URL: `component.externalReferences[].url` where `type == "distribution"`
+- Hermeto marker: `component.properties[]` where `name == "hermeto:found_by"`
+
+#### SPDX
+- Predicate type: `https://spdx.dev/Document`
+- Packages: `predicate.packages`
+- PURL: `pkg.externalRefs[].referenceLocator` where `referenceType == "purl"`
+- Download URL: Inside PURL as `download_url` qualifier
+- Hermeto marker: `pkg.annotations[].comment` contains `"hermeto:found_by"`
+
+See [SBOM Structure Reference](reference/sbom-structure.md) for complete details and examples.

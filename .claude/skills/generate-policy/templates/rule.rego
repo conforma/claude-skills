@@ -1,59 +1,51 @@
 #
 # METADATA
-# title: Package Source Validation
+# title: Example Policy Rule
 # description: >-
-#   Validates that packages in the SBOM come from allowed sources.
-#   This is a standalone rule template for EC policy validation.
+#   Template for standalone EC policy rules.
+#   Customize the package name, metadata, and validation logic for your use case.
 #
-package policy.release.package_sources
+package policy.release.example_rule
 
 import rego.v1
 
 # METADATA
-# title: Allowed package sources
+# title: Example validation check
 # description: >-
-#   Verify that packages fetched by Hermeto come from allowed distribution URLs.
-#   By default, no sources are allowed unless explicitly configured.
+#   Validates attestation data against configured requirements.
+#   Customize this rule for your specific validation needs.
 # custom:
-#   short_name: allowed_sources
-#   failure_msg: "Package %s was sourced from %s which is not allowed"
+#   short_name: example_check
+#   failure_msg: "Validation failed: %s"
 #   solution: >-
-#     Update the build to fetch packages only from allowed sources.
-#     Configure the allowed_package_sources rule data with permitted URL patterns.
+#     Review the attestation data and ensure it meets the required criteria.
 deny contains result if {
-	# Get CycloneDX SBOMs from attestations
+	# Access attestations from input
 	some att in input.attestations
-	att.statement.predicateType == "https://cyclonedx.org/bom"
-	sbom := att.statement.predicate
 
-	# Find components with distribution references
-	some component in sbom.components
-	some ref in component.externalReferences
-	ref.type == "distribution"
+	# Filter by predicate type (customize for your attestation type)
+	# Common types:
+	#   - "https://cyclonedx.org/bom" (CycloneDX SBOM)
+	#   - "https://spdx.dev/Document" (SPDX SBOM)
+	#   - "https://slsa.dev/provenance/v1" (SLSA Provenance)
+	att.statement.predicateType == "<predicate_type>"
+	predicate := att.statement.predicate
 
-	# Only check components fetched by Hermeto
-	some prop in component.properties
-	prop.name == "hermeto:found_by"
-
-	# Get the distribution URL and package identifier
-	url := ref.url
-	purl := component.purl
-
-	# Check against allowed patterns from rule data
-	allowed_patterns := object.get(data.rule_data, "allowed_sources", [])
-	not _url_matches_allowed(url, allowed_patterns)
+	# Your validation logic here
+	# Example: check a required field exists
+	not _is_valid(predicate)
 
 	# Construct the result
 	result := {
-		"code": "package_sources.allowed_sources",
-		"msg": sprintf("Package %s was sourced from %s which is not allowed", [purl, url]),
+		"code": "example_rule.example_check",
+		"msg": sprintf("Validation failed: %s", ["describe the issue"]),
 		"severity": "failure",
-		"term": purl,
 	}
 }
 
-# Helper: check if URL matches any allowed pattern
-_url_matches_allowed(url, patterns) if {
-	some pattern in patterns
-	regex.match(pattern, url)
+# Helper function for validation logic
+_is_valid(predicate) if {
+	# Add your validation conditions here
+	# This example checks for a required field
+	predicate.required_field != ""
 }
