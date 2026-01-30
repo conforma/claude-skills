@@ -52,6 +52,7 @@ ec validate image <IMAGE_REF> \
 ### Core References
 
 - [Rego Patterns Reference](reference/rego-patterns.md) - Rego v1 syntax, metadata format, result construction
+- [Test Patterns Reference](reference/test-patterns.md) - OPA testing, mock helpers, required test cases
 - [Policy Configuration Reference](reference/policy-config.md) - Policy config structure, ruleData, collections
 
 ### Domain-Specific References
@@ -63,6 +64,7 @@ ec validate image <IMAGE_REF> \
 ### Templates
 
 - [Rule Template](templates/rule.rego) - Generic Rego v1 rule
+- [Test Template](templates/test.rego) - Test file with mock helpers
 - [SBOM Rule Template](templates/sbom-rule.rego) - Package source validation example
 - [Policy Config Template](templates/policy.yaml) - EC policy configuration
 
