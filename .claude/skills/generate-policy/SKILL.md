@@ -1,76 +1,76 @@
 ---
 name: generate-policy
-description: Generate standalone Enterprise Contract policy rules in Rego v1. Use when creating new rules that validate attestations, SBOMs, provenance, or other supply chain data.
+description: Generate complete EC validation setup for container images. Creates policy rules, tests, configuration, and ready-to-run commands. Users don't need to know Rego, EC, or SBOM formats.
 allowed-tools: Read, Bash, Glob, Grep, Task, Write, Edit
 ---
 
 # Generate Policy Skill
 
-Use this skill to generate standalone Enterprise Contract (EC) policy rules in Rego v1.
+Help users validate container images with Enterprise Contract (EC) policies. The user doesn't need to know anything about Rego, EC, SBOMs, or policy configuration - this skill handles everything.
 
-## When to Use
+## What the User Provides
 
-- Creating new EC policy rules
-- Writing Rego rules that validate attestations
-- Implementing validation checks for builds, images, or supply chain data
-- Understanding attestation structures for policy development
+| Input | Description | Example |
+|-------|-------------|---------|
+| Image reference | Container image to validate | `quay.io/org/app@sha256:abc123...` |
+| Public key | Cosign public key file (optional) | `cosign.pub` |
+| Validation requirements | What they want to check | "Ensure npm packages come from registry.npmjs.org" |
+
+## What to Generate
+
+When a user requests policy validation, generate these artifacts:
+
+| Artifact | Description |
+|----------|-------------|
+| Policy rule (`.rego`) | Standalone Rego v1 rule |
+| Test file (`_test.rego`) | Comprehensive tests for the rule |
+| Policy config (`policy.yaml`) | EC configuration with ruleData |
+| EC command | Ready-to-run `ec validate image` command |
+| Instructions | Clear next steps for the user |
+
+## Workflow
+
+1. **Gather requirements** - Ask what the user wants to validate
+2. **Prompt for required inputs** - See domain references for what to ask (e.g., `allowed_package_sources` for SBOM rules)
+3. **Generate artifacts** - Create all files in a `policy/` directory
+4. **Provide EC command** - Give a ready-to-run validation command
+5. **Explain next steps** - How to run and customize
+
+## EC Command Template
+
+```bash
+ec validate image <IMAGE_REF> \
+  --policy policy.yaml \
+  --public-key <PUBLIC_KEY_FILE> \
+  --output yaml
+```
+
+---
 
 ## Reference Documents
 
 ### Core References
 
-- [Rego Patterns Reference](reference/rego-patterns.md) - Rego v1 syntax and patterns including:
-  - Import statements and syntax requirements
-  - Metadata format (YAML comments)
-  - Input/data access patterns
-  - Result construction
-  - Available built-in functions
-
-### Templates
-
-Starter templates for new rules:
-- [Rule Template](templates/rule.rego) - Generic standalone Rego v1 rule template
-- [SBOM Rule Template](templates/sbom-rule.rego) - Example for CycloneDX SBOM validation
+- [Rego Patterns Reference](reference/rego-patterns.md) - Rego v1 syntax, metadata format, result construction
+- [Policy Configuration Reference](reference/policy-config.md) - Policy config structure, ruleData, collections
 
 ### Domain-Specific References
 
 #### SBOM Validation
+- [SBOM Structure Reference](reference/sbom-structure.md) - SPDX/CycloneDX paths, required inputs
+- [SPDX 2.3 Schema](reference/spdx-schema.json), [CycloneDX 1.5 Schema](reference/cyclonedx-schema.json)
 
-For rules that validate Software Bill of Materials:
+### Templates
 
-- [SBOM Structure Reference](reference/sbom-structure.md) - Exact paths for SPDX and CycloneDX formats
-- [SPDX 2.3 Schema](reference/spdx-schema.json) - Full JSON schema
-- [CycloneDX 1.5 Schema](reference/cyclonedx-schema.json) - Full JSON schema
+- [Rule Template](templates/rule.rego) - Generic Rego v1 rule
+- [SBOM Rule Template](templates/sbom-rule.rego) - Package source validation example
+- [Policy Config Template](templates/policy.yaml) - EC policy configuration
 
 ---
 
-## Rego v1 Quick Reference
+## Quick References
 
-### Required Import
-
-```rego
-import rego.v1
-```
-
-### Metadata Format
-
-Every rule must have metadata:
-
-```rego
-# METADATA
-# title: Rule Title
-# description: >-
-#   What the rule checks.
-# custom:
-#   short_name: rule_name
-#   failure_msg: "Error: %s"
-#   solution: >-
-#     How to fix violations.
-```
-
-### Standalone Rule Template
-
-Rules should be standalone (no Conforma library dependencies):
+### Rego v1 Essentials
 
 ```rego
 package policy.release.<rule_name>
@@ -78,85 +78,49 @@ package policy.release.<rule_name>
 import rego.v1
 
 # METADATA
-# title: <Human readable title>
+# title: Rule Title
 # description: >-
-#   <Description of what the rule checks>
+#   What the rule checks.
 # custom:
-#   short_name: <short_name>
-#   failure_msg: "<Message template with %s placeholders>"
-#   solution: >-
-#     <How to fix violations>
+#   short_name: rule_name
+#   failure_msg: "Error: %s"
+#   solution: How to fix.
 deny contains result if {
-    # Access attestations
     some att in input.attestations
-
-    # Filter by predicate type
-    att.statement.predicateType == "<predicate_type>"
-    data := att.statement.predicate
-
-    # Your validation logic here
-    # <conditions>
-
+    att.statement.predicateType == "<type>"
+    # validation logic
     result := {
-        "code": "<package>.<short_name>",
-        "msg": sprintf("<message>", [<args>]),
+        "code": "package.rule_name",
+        "msg": sprintf("Error: %s", [value]),
         "severity": "failure",
-        "term": <identifier>,
     }
 }
 ```
 
-### Key Built-in Functions
+### Policy Config Essentials
 
-```rego
-# String formatting
-sprintf("Value %s from %s", [val1, val2])
-
-# Regex matching (use raw strings)
-regex.match(`^https://allowed\.com/`, url)
-
-# Safe object access with default
-object.get(obj, "key", default_value)
-
-# Membership testing
-"value" in collection
-
-# PURL parsing (EC built-in)
-parsed := ec.purl.parse(purl)
+```yaml
+name: <policy_name>
+description: <description>
+sources:
+  - name: <source_name>
+    policy:
+      - ./policy/release
+    ruleData:
+      allowed_package_sources:
+        - "^https://registry\\.npmjs\\.org/"
+    config:
+      include:
+        - "@minimal"
 ```
 
-### Iteration Patterns
+### SBOM Quick Reference
 
-```rego
-# Iterate over collection
-some item in collection
-
-# Iterate with index
-some index, item in collection
-
-# Filter while iterating
-some item in collection
-item.type == "expected"
-```
-
----
-
-## Domain Quick References
-
-### SBOM Validation
-
-#### CycloneDX
-- Predicate type: `https://cyclonedx.org/bom`
+**CycloneDX**: `predicateType: "https://cyclonedx.org/bom"`
 - Components: `predicate.components`
 - PURL: `component.purl`
 - Distribution URL: `component.externalReferences[].url` where `type == "distribution"`
-- Hermeto marker: `component.properties[]` where `name == "hermeto:found_by"`
 
-#### SPDX
-- Predicate type: `https://spdx.dev/Document`
+**SPDX**: `predicateType: "https://spdx.dev/Document"`
 - Packages: `predicate.packages`
 - PURL: `pkg.externalRefs[].referenceLocator` where `referenceType == "purl"`
-- Download URL: Inside PURL as `download_url` qualifier
-- Hermeto marker: `pkg.annotations[].comment` contains `"hermeto:found_by"`
-
-See [SBOM Structure Reference](reference/sbom-structure.md) for complete details and examples.
