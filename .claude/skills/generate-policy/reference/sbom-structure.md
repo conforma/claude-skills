@@ -2,6 +2,48 @@
 
 This document describes the exact structure of SPDX and CycloneDX SBOM attestations to enable traversal and policy rule development.
 
+## Required Inputs for SBOM Rules
+
+When generating SBOM validation rules, prompt the user for required configuration:
+
+### Package Source Validation
+
+When the user requests a rule to validate package sources (e.g., "validate npm packages come from allowed sources"):
+
+**Required**: `allowed_package_sources` - List of allowed source URLs or regex patterns
+
+**Prompt**: "What sources should be allowed for [package type] packages? Please provide a list of allowed URLs or URL patterns."
+
+**Example values**:
+- `["https://registry.npmjs.org/"]` - npm packages
+- `["https://proxy.golang.org/"]` - Go modules
+- `["https://pypi.org/", "https://pypi.internal.company.com/"]` - Python packages
+
+**Usage in policy config** (`ruleData`):
+```yaml
+ruleData:
+  allowed_package_sources:
+    - "^https://registry\\.npmjs\\.org/"
+    - "^https://npm\\.internal\\.company\\.com/"
+```
+
+**Usage in Rego rule**:
+```rego
+allowed_patterns := object.get(data.rule_data, "allowed_package_sources", [])
+not _url_matches_allowed(url, allowed_patterns)
+```
+
+### Other SBOM Rule Inputs
+
+| Rule Type | Required Input | Description |
+|-----------|---------------|-------------|
+| Package source validation | `allowed_package_sources` | List of allowed URL patterns |
+| License validation | `allowed_licenses` | List of allowed SPDX license IDs |
+| Package blocklist | `disallowed_packages` | List of blocked package PURLs |
+| Attribute validation | `disallowed_attributes` | List of forbidden package attributes |
+
+---
+
 ## SPDX Format
 
 ### Identification

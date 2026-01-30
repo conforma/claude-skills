@@ -15,11 +15,11 @@ import rego.v1
 #   Verify that packages fetched by Hermeto come from allowed distribution URLs.
 #   By default, no sources are allowed unless explicitly configured.
 # custom:
-#   short_name: allowed_sources
+#   short_name: allowed_package_sources
 #   failure_msg: "Package %s was sourced from %s which is not allowed"
 #   solution: >-
 #     Update the build to fetch packages only from allowed sources.
-#     Configure the allowed_sources rule data with permitted URL patterns.
+#     Configure the allowed_package_sources rule data with permitted URL patterns.
 deny contains result if {
 	# Get CycloneDX SBOMs from attestations
 	some att in input.attestations
@@ -40,12 +40,12 @@ deny contains result if {
 	purl := component.purl
 
 	# Check against allowed patterns from rule data
-	allowed_patterns := object.get(data.rule_data, "allowed_sources", [])
+	allowed_patterns := object.get(data.rule_data, "allowed_package_sources", [])
 	not _url_matches_allowed(url, allowed_patterns)
 
 	# Construct the result
 	result := {
-		"code": "package_sources.allowed_sources",
+		"code": "package_sources.allowed_package_sources",
 		"msg": sprintf("Package %s was sourced from %s which is not allowed", [purl, url]),
 		"severity": "failure",
 		"term": purl,
