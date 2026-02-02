@@ -1,6 +1,6 @@
 # Rego v1 Patterns for EC Policy Rules
 
-This document describes the exact Rego v1 patterns to use when generating Enterprise Contract policy rules. Rules must be standalone (no Conforma library dependencies).
+This document describes the exact Rego v1 patterns to use when generating Conforma policy rules. Rules must be standalone (no Conforma library dependencies).
 
 ## File Organization
 

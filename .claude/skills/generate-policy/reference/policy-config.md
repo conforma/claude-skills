@@ -1,6 +1,6 @@
 # EC Policy Configuration Reference
 
-This document describes the structure of Enterprise Contract policy configuration files.
+This document describes the structure of Conforma policy configuration files.
 
 **Schema source**: [conforma/crds](https://github.com/conforma/crds) repository
 

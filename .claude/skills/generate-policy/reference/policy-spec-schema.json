@@ -67,7 +67,7 @@
       },
       "additionalProperties": false,
       "type": "object",
-      "description": "EnterpriseContractPolicySpec is used to configure the Enterprise Contract Policy"
+      "description": "EnterpriseContractPolicySpec is used to configure the Conforma Policy"
     },
     "Identity": {
       "properties": {

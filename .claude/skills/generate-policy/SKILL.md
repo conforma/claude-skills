@@ -1,12 +1,12 @@
 ---
 name: generate-policy
-description: Generate complete EC validation setup for container images. Creates policy rules, tests, configuration, and ready-to-run commands. Users don't need to know Rego, EC, or SBOM formats.
+description: Generate complete Conforma validation setup for container images. Creates policy rules, tests, configuration, and ready-to-run commands. Users don't need to know Rego, Conforma, or SBOM formats.
 allowed-tools: Read, Bash, Glob, Grep, Task, Write, Edit
 ---
 
 # Generate Policy Skill
 
-Help users validate container images with Enterprise Contract (EC) policies. The user doesn't need to know anything about Rego, EC, SBOMs, or policy configuration - this skill handles everything.
+Help users validate container images with Conforma policies. The user doesn't need to know anything about Rego, Conforma, SBOMs, or policy configuration - this skill handles everything.
 
 ## What the User Provides
 
@@ -24,8 +24,8 @@ When a user requests policy validation, generate these artifacts:
 |----------|-------------|
 | Policy rule (`.rego`) | Standalone Rego v1 rule |
 | Test file (`_test.rego`) | Comprehensive tests for the rule |
-| Policy config (`policy.yaml`) | EC configuration with ruleData |
-| EC command | Ready-to-run `ec validate image` command |
+| Policy config (`policy.yaml`) | Conforma configuration with ruleData |
+| Conforma command | Ready-to-run `ec validate image` command |
 | Instructions | Clear next steps for the user |
 
 ## Workflow
@@ -33,7 +33,7 @@ When a user requests policy validation, generate these artifacts:
 1. **Gather requirements** - Ask what the user wants to validate
 2. **Prompt for required inputs** - See domain references for what to ask (e.g., `allowed_package_sources` for SBOM rules)
 3. **Generate artifacts** - Create files with directory matching package name (for Rego lint compliance)
-4. **Provide EC command** - Give a ready-to-run validation command
+4. **Provide Conforma command** - Give a ready-to-run validation command
 5. **Explain next steps** - How to run and customize
 
 ## Directory Structure
@@ -42,13 +42,13 @@ For Rego lint compliance, directory path must match package name:
 
 ```
 policy/
-├── policy.yaml                    # EC configuration (references ./release)
+├── policy.yaml                    # Conforma configuration (references ./release)
 └── release/                       # Matches "policy.release.*"
     ├── <rule_name>.rego           # package policy.release.<rule_name>
     └── <rule_name>_test.rego      # package policy.release.<rule_name>_test
 ```
 
-## EC Command Template
+## Conforma Command Template
 
 ```bash
 ec validate image \
@@ -81,7 +81,7 @@ ec validate image \
 - [Rule Template](templates/rule.rego) - Generic Rego v1 rule
 - [Test Template](templates/test.rego) - Test file with mock helpers
 - [SBOM Rule Template](templates/sbom-rule.rego) - Package source validation example
-- [Policy Config Template](templates/policy.yaml) - EC policy configuration
+- [Policy Config Template](templates/policy.yaml) - Conforma policy configuration
 
 ---
 
