@@ -32,17 +32,32 @@ When a user requests policy validation, generate these artifacts:
 
 1. **Gather requirements** - Ask what the user wants to validate
 2. **Prompt for required inputs** - See domain references for what to ask (e.g., `allowed_package_sources` for SBOM rules)
-3. **Generate artifacts** - Create all files in a `policy/` directory
+3. **Generate artifacts** - Create files with directory matching package name (for Rego lint compliance)
 4. **Provide EC command** - Give a ready-to-run validation command
 5. **Explain next steps** - How to run and customize
+
+## Directory Structure
+
+For Rego lint compliance, directory path must match package name:
+
+```
+policy/
+├── policy.yaml                    # EC configuration (references ./release)
+└── release/                       # Matches "policy.release.*"
+    ├── <rule_name>.rego           # package policy.release.<rule_name>
+    └── <rule_name>_test.rego      # package policy.release.<rule_name>_test
+```
 
 ## EC Command Template
 
 ```bash
-ec validate image <IMAGE_REF> \
-  --policy policy.yaml \
+ec validate image \
+  --image <IMAGE_REFERENCE> \
+  --policy ./policy/policy.yaml \
   --public-key <PUBLIC_KEY_FILE> \
-  --output yaml
+  --ignore-rekor \
+  --output text \
+  --info
 ```
 
 ---

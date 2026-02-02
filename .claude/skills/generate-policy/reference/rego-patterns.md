@@ -2,6 +2,38 @@
 
 This document describes the exact Rego v1 patterns to use when generating Enterprise Contract policy rules. Rules must be standalone (no Conforma library dependencies).
 
+## File Organization
+
+### Directory Structure Must Match Package Name
+
+For Rego lint compliance, files must be in a directory path that matches the package name:
+
+| Package | File Path |
+|---------|-----------|
+| `policy.release.package_sources` | `policy/release/package_sources.rego` |
+| `policy.release.package_sources_test` | `policy/release/package_sources_test.rego` |
+
+**Rule**: Replace dots in package name with directory separators.
+
+### Example Structure
+
+```
+policy/
+├── policy.yaml                           # EC configuration
+└── release/                              # Matches "policy.release"
+    ├── package_sources.rego              # package policy.release.package_sources
+    └── package_sources_test.rego         # package policy.release.package_sources_test
+```
+
+### Naming Conventions
+
+| File Type | Package Suffix | File Suffix |
+|-----------|---------------|-------------|
+| Rule | `<name>` | `<name>.rego` |
+| Test | `<name>_test` | `<name>_test.rego` |
+
+---
+
 ## Syntax Requirements
 
 ### Import Statement
