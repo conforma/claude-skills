@@ -1,0 +1,70 @@
+# Conforma Policy Configuration
+#
+# This template defines an EC policy that specifies which rules to evaluate
+# and how to configure them. Customize the placeholders for your use case.
+#
+# Schema: https://github.com/conforma/crds/blob/main/api/v1alpha1/policy_spec.json
+
+# Optional name for this policy
+name: <policy_name>
+
+# Description of the policy or its intended use
+description: <policy_description>
+
+# One or more groups of policy rules
+sources:
+  - # Optional name for this source
+    name: <source_name>
+
+    # List of policy source URLs (go-getter style)
+    # Examples:
+    #   - Local path: ./policy/release
+    #   - Git repo: git::https://github.com/org/repo.git//policy?ref=main
+    #   - OCI image: oci::quay.io/org/policy:latest
+    policy:
+      - <policy_source_url>
+
+    # Optional: List of data source URLs
+    # data:
+    #   - <data_source_url>
+
+    # Optional: Arbitrary rule data visible to policy rules
+    ruleData:
+      # Example: allowed package sources for SBOM validation
+      allowed_package_sources:
+        - type: <package_type>  # e.g., npm, golang, pypi
+          patterns:
+            - "<regex_pattern>"  # e.g., "^https://registry\\.npmjs\\.org/"
+
+    # Optional: Configure which rules to include/exclude from this source
+    config:
+      # Rules to include (overrides excludes)
+      # Use @collection_name to include a collection
+      include:
+        - "@<collection_name>"  # e.g., @redhat, @minimal, @slsa3
+        # - "<package>.<rule_name>"  # Include specific rule
+
+      # Rules to exclude (won't block success if they fail)
+      # exclude:
+      #   - "<package>.<rule_name>"
+
+# Optional: Global configuration (applies to all sources)
+# configuration:
+#   include:
+#     - "@<collection_name>"
+#   exclude:
+#     - "<package>.<rule_name>"
+
+# Optional: Public key for signature verification
+# publicKey: |
+#   -----BEGIN PUBLIC KEY-----
+#   ...
+#   -----END PUBLIC KEY-----
+
+# Optional: Rekor URL for transparency log verification (empty string disables)
+# rekorUrl: https://rekor.sigstore.dev
+
+# Optional: Identity for keyless verification
+# identity:
+#   issuer: https://accounts.google.com
+#   subject: user@example.com

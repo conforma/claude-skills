@@ -21,7 +21,8 @@
       "Bash(tree:*)",
       "Bash(find:*)",
       "Bash(opa fmt:*)",
-      "Bash(opa check:*)"
+      "Bash(opa check:*)",
+      "Bash(opa test:*)"
     ]
   }
 }
