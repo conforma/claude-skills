@@ -47,8 +47,8 @@ Policy URLs use go-getter style syntax:
 
 | Type | Format | Example |
 |------|--------|---------|
-| Local path | `./path` | `./policy/release` |
-| Git | `git::URL//path?ref=REF` | `git::https://github.com/org/repo.git//policy?ref=main` |
+| Local path | `./path` | `./policy/package_sources` (relative to policy.yaml) |
+| Git | `git::URL//path?ref=REF` | `git::https://github.com/org/repo.git//release_policies/policy/package_sources?ref=main` |
 | OCI | `oci::REGISTRY/IMAGE:TAG` | `oci::quay.io/org/policy:latest` |
 
 ### ruleData

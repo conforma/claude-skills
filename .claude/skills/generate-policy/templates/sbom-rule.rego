@@ -5,7 +5,7 @@
 #   Validates that packages in a CycloneDX SBOM come from allowed sources.
 #   Example template for SBOM validation rules.
 #
-package policy.release.package_sources
+package policy.package_sources
 
 import rego.v1
 

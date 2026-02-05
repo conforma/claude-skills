@@ -8,22 +8,22 @@ This document describes how to write tests for EC policy rules using OPA's testi
 
 ### Naming and Location
 
-For Rego lint compliance, test files must be in a directory that matches the package name:
+For Rego lint compliance, test files must be in the same directory as the rule file, which matches the package name:
 
 | Package | File Path |
 |---------|-----------|
-| `policy.release.package_sources_test` | `policy/release/package_sources_test.rego` |
+| `policy.package_sources_test` | `<name>/policy/package_sources/package_sources_test.rego` |
 
-- Test file: `<rule>_test.rego` (same directory as the rule)
-- Package: `<rule_package>_test` (e.g., `policy.release.package_sources_test`)
+- Test file: `<rule_name>_test.rego` (same directory as the rule)
+- Package: `policy.<rule_name>_test` (e.g., `policy.package_sources_test`)
 
 ### Structure
 ```rego
-package policy.release.<rule_name>_test
+package policy.<rule_name>_test
 
 import rego.v1
 
-import data.policy.release.<rule_name>
+import data.policy.<rule_name>
 
 # Test rules prefixed with test_
 test_<descriptive_name> if {

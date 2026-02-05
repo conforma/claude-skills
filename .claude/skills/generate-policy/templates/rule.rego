@@ -5,7 +5,7 @@
 #   Template for standalone EC policy rules.
 #   Customize the package name, metadata, and validation logic for your use case.
 #
-package policy.release.example_rule
+package policy.example_rule
 
 import rego.v1
 

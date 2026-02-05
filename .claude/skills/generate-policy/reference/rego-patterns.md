@@ -6,23 +6,41 @@ This document describes the exact Rego v1 patterns to use when generating Confor
 
 ### Directory Structure Must Match Package Name
 
-For Rego lint compliance, files must be in a directory path that matches the package name:
+For Rego lint compliance, files must be in a directory path that matches the package name. Use a descriptive top-level directory, with rules organized under a `policy/` subdirectory:
 
 | Package | File Path |
 |---------|-----------|
-| `policy.release.package_sources` | `policy/release/package_sources.rego` |
-| `policy.release.package_sources_test` | `policy/release/package_sources_test.rego` |
+| `policy.package_sources` | `<name>/policy/package_sources/package_sources.rego` |
+| `policy.package_sources_test` | `<name>/policy/package_sources/package_sources_test.rego` |
 
-**Rule**: Replace dots in package name with directory separators.
+**Rule**: The directory name matches the rule name, and files inside use the same name.
 
 ### Example Structure
 
 ```
-policy/
+release_policies/                         # Descriptive top-level directory
 ├── policy.yaml                           # EC configuration
-└── release/                              # Matches "policy.release"
-    ├── package_sources.rego              # package policy.release.package_sources
-    └── package_sources_test.rego         # package policy.release.package_sources_test
+└── policy/                               # Contains all rule directories
+    └── package_sources/                  # Directory matches rule name
+        ├── package_sources.rego          # package policy.package_sources
+        └── package_sources_test.rego     # package policy.package_sources_test
+```
+
+### Multiple Rules Example
+
+```
+release_policies/
+├── policy.yaml
+└── policy/
+    ├── allowed_registries/
+    │   ├── allowed_registries.rego       # package policy.allowed_registries
+    │   └── allowed_registries_test.rego
+    ├── no_git_sources/
+    │   ├── no_git_sources.rego           # package policy.no_git_sources
+    │   └── no_git_sources_test.rego
+    └── approved_base_images/
+        ├── approved_base_images.rego     # package policy.approved_base_images
+        └── approved_base_images_test.rego
 ```
 
 ### Naming Conventions
@@ -343,7 +361,7 @@ array.concat(arr1, arr2)
 ### Naming Conventions
 
 - Use `snake_case` for rule names and variables
-- Package names: `policy.release.<rule_category>`
+- Package names: `policy.<rule_name>` (e.g., `policy.package_sources`)
 - Short names: descriptive, lowercase with underscores
 
 ### Code Organization
@@ -352,7 +370,7 @@ array.concat(arr1, arr2)
 # 1. Package metadata
 # METADATA
 # title: ...
-package policy.release.my_rules
+package policy.my_rules
 
 # 2. Imports
 import rego.v1
@@ -384,6 +402,8 @@ _helper_function(arg) := result if {
 
 ## Complete Example
 
+File: `release_policies/policy/package_sources/package_sources.rego`
+
 ```rego
 #
 # METADATA
@@ -391,7 +411,7 @@ _helper_function(arg) := result if {
 # description: >-
 #   Validates that packages in the SBOM come from allowed sources.
 #
-package policy.release.package_sources
+package policy.package_sources
 
 import rego.v1
 
