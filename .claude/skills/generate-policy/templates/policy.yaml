@@ -17,12 +17,13 @@ sources:
     name: <source_name>
 
     # List of policy source URLs (go-getter style)
+    # Each rule has its own directory under policy/ matching the package name
     # Examples:
-    #   - Local path: ./policy/release
-    #   - Git repo: git::https://github.com/org/repo.git//policy?ref=main
+    #   - Local path: ./policy/package_sources (relative to this file)
+    #   - Git repo: git::https://github.com/org/repo.git//release_policies/policy/package_sources?ref=main
     #   - OCI image: oci::quay.io/org/policy:latest
     policy:
-      - <policy_source_url>
+      - ./policy/<rule_name>    # Directory under policy/ matches package name
 
     # Optional: List of data source URLs
     # data:

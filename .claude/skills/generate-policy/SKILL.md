@@ -12,9 +12,12 @@ Help users validate container images with Conforma policies. The user doesn't ne
 
 | Input | Description | Example |
 |-------|-------------|---------|
-| Image reference | Container image to validate | `quay.io/org/app@sha256:abc123...` |
+| Policy set name | Descriptive name for the policy set | `release_policies` |
+| Image reference | Container image to validate (optional) | `quay.io/org/app@sha256:abc123...` |
 | Public key | Cosign public key file (optional) | `cosign.pub` |
 | Validation requirements | What they want to check | "Ensure npm packages come from registry.npmjs.org" |
+
+See [Policy Requirements Template](../../../POLICY_REQUIREMENTS_TEMPLATE.md) for a complete requirements checklist.
 
 ## What to Generate
 
@@ -38,14 +41,25 @@ When a user requests policy validation, generate these artifacts:
 
 ## Directory Structure
 
-For Rego lint compliance, directory path must match package name:
+For Rego lint compliance, directory path must match package name. Use a descriptive top-level directory name, with rules organized under a `policy/` subdirectory:
 
 ```
-policy/
-├── policy.yaml                    # Conforma configuration (references ./release)
-└── release/                       # Matches "policy.release.*"
-    ├── <rule_name>.rego           # package policy.release.<rule_name>
-    └── <rule_name>_test.rego      # package policy.release.<rule_name>_test
+<descriptive_name>/                # e.g., release_policies, sbom_validation
+├── policy.yaml                    # Conforma configuration
+└── policy/                        # Contains all rule directories
+    └── <rule_name>/               # Directory matches package name
+        ├── <rule_name>.rego       # package policy.<rule_name>
+        └── <rule_name>_test.rego  # package policy.<rule_name>_test
+```
+
+**Example** - For release policies with a `package_sources` rule:
+```
+release_policies/
+├── policy.yaml
+└── policy/
+    └── package_sources/
+        ├── package_sources.rego       # package policy.package_sources
+        └── package_sources_test.rego  # package policy.package_sources_test
 ```
 
 ## Conforma Command Template
@@ -90,7 +104,7 @@ ec validate image \
 ### Rego v1 Essentials
 
 ```rego
-package policy.release.<rule_name>
+package policy.<rule_name>
 
 import rego.v1
 
@@ -107,7 +121,7 @@ deny contains result if {
     att.statement.predicateType == "<type>"
     # validation logic
     result := {
-        "code": "package.rule_name",
+        "code": "<rule_name>.rule_name",
         "msg": sprintf("Error: %s", [value]),
         "severity": "failure",
     }
@@ -122,13 +136,13 @@ description: <description>
 sources:
   - name: <source_name>
     policy:
-      - ./policy/release
+      - ./policy/<rule_name>    # Reference each rule directory under policy/
     ruleData:
       allowed_package_sources:
         - "^https://registry\\.npmjs\\.org/"
     config:
       include:
-        - "@minimal"
+        - "<rule_name>.short_name"
 ```
 
 ### SBOM Quick Reference
