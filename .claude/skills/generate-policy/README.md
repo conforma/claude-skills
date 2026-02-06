@@ -20,6 +20,7 @@ Or use the slash command:
 
 | Input | Required | Example |
 |-------|----------|---------|
+| Policy set name | Yes | `registry_validation` |
 | Validation requirements | Yes | "Ensure packages come from approved sources" |
 | Image reference | Yes | `quay.io/org/app@sha256:abc123...` |
 | Public key file | Optional | `cosign.pub` |
@@ -30,9 +31,10 @@ The skill will prompt you for any missing information.
 
 | Artifact | Location | Description |
 |----------|----------|-------------|
-| Policy rule | `policy/release/<rule>.rego` | Rego v1 validation rule |
-| Tests | `policy/release/<rule>_test.rego` | Comprehensive test coverage |
-| Policy config | `policy/policy.yaml` | Conforma configuration with ruleData |
+| Policy rule | `<policy_set>/policy/<rule>/<rule>.rego` | Rego v1 validation rule |
+| Tests | `<policy_set>/policy/<rule>/<rule>_test.rego` | Comprehensive test coverage |
+| Policy config | `<policy_set>/policy.yaml` | Conforma configuration with ruleData |
+| Public key | `<policy_set>/cosign.pub` | Public key for signature verification |
 | Conforma command | (displayed) | Ready-to-run validation command |
 
 ## Example Prompts
@@ -42,55 +44,68 @@ The skill will prompt you for any missing information.
 - "Validate that my image only uses packages from approved sources"
 - "Block packages downloaded from untrusted registries"
 
-**Dependency Checks**
-- "Verify all dependencies have valid PURLs"
-- "Ensure no packages come from GitHub directly"
-- "Check that all components have distribution URLs"
+**Registry Validation**
+- "Verify container images come from approved registries"
+- "Only allow images from quay.io and registry.redhat.io"
 
-**General**
-- "I want to validate a container image" (skill will ask for details)
-- "Help me set up Conforma validation for my container"
+**License Compliance**
+- "Ensure all packages have declared licenses"
+- "Block packages with NOASSERTION license"
 
 ## Generated Command
 
-After generating the policy, you'll receive a command like:
+After generating the policy, run the validation from within the policy set directory:
 
 ```bash
+cd <policy_set>
+
 ec validate image \
   --image quay.io/org/app@sha256:abc123... \
-  --policy ./policy/policy.yaml \
+  --policy policy.yaml \
   --public-key cosign.pub \
   --ignore-rekor \
   --output text \
   --info
 ```
 
+**Important**: The command must be run from the policy set directory because `policy.yaml` references rules with relative paths (`./policy/<rule_name>`).
+
 ## Example Workflow
 
 1. **Invoke the skill**
    ```
-   Create a policy that validates npm packages come from the official registry
+   Create a policy set called "registry_validation" that validates container images come from approved registries
    ```
 
 2. **Provide inputs when prompted**
    - Image reference: `quay.io/myorg/myapp@sha256:...`
-   - Public key: `cosign.pub`
-   - Allowed sources: `https://registry.npmjs.org`
+   - Public key: (provided inline or as file)
+   - Approved registries: `quay.io, registry.redhat.io`
 
 3. **Review generated files**
    ```
-   policy/
+   registry_validation/
    ├── policy.yaml
-   └── release/
-       ├── package_sources.rego
-       └── package_sources_test.rego
+   ├── cosign.pub
+   └── policy/
+       └── approved_image_registries/
+           ├── approved_image_registries.rego
+           └── approved_image_registries_test.rego
    ```
 
-4. **Run the validation**
+4. **Run the tests**
    ```bash
+   cd registry_validation
+   opa test . -v
+   ```
+
+5. **Run the validation**
+   ```bash
+   cd registry_validation
+
    ec validate image \
      --image quay.io/myorg/myapp@sha256:... \
-     --policy ./policy/policy.yaml \
+     --policy policy.yaml \
      --public-key cosign.pub \
      --ignore-rekor \
      --output text \
@@ -99,8 +114,9 @@ ec validate image \
 
 ## Running Tests
 
-Test the generated rules with OPA:
+Test the generated rules with OPA from within the policy set directory:
 
 ```bash
-opa test policy/release/ -v
+cd <policy_set>
+opa test . -v
 ```

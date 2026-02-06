@@ -2,6 +2,63 @@
 
 This document describes the exact structure of SPDX and CycloneDX SBOM attestations to enable traversal and policy rule development.
 
+## IMPORTANT: Accessing SBOMs
+
+SBOMs are NOT always directly embedded in attestations. In Konflux/RHTAP builds, the SBOM is stored as an OCI blob and referenced from the SLSA provenance attestation.
+
+### Use the Standalone SBOM Library
+
+**Always include the standalone SBOM library** in your policy set. Create `policy/lib/sbom.rego` with the SBOM access functions that handle:
+1. SBOMs embedded directly in attestations
+2. SBOMs stored as OCI blobs (fetched via `ec.oci.blob()`)
+
+```rego
+import data.lib.sbom
+
+# Access SPDX SBOMs
+some s in sbom.spdx_sboms
+some pkg in s.packages
+
+# Access CycloneDX SBOMs
+some s in sbom.cyclonedx_sboms
+some component in s.components
+```
+
+### Policy Configuration
+
+Include the lib directory in your policy.yaml:
+
+```yaml
+sources:
+  - name: my-rules
+    policy:
+      - ./policy/lib        # Standalone SBOM library
+      - ./policy/my_rule
+```
+
+### Why This Matters
+
+If you iterate directly over `input.attestations`, you will only find SBOMs that are inline attestations. For images built with Konflux/RHTAP:
+- The SLSA provenance contains a `SBOM_BLOB_URL` task result
+- The actual SBOM is stored at that OCI blob URL
+- The `lib.sbom` functions fetch and parse this automatically using `ec.oci.blob()`
+
+### Directory Structure
+
+```
+<policy_set>/
+├── policy.yaml
+├── cosign.pub
+└── policy/
+    ├── lib/
+    │   └── sbom.rego           # Standalone SBOM access library
+    └── <rule_name>/
+        ├── <rule_name>.rego
+        └── <rule_name>_test.rego
+```
+
+---
+
 ## Required Inputs for SBOM Rules
 
 When generating SBOM validation rules, prompt the user for required configuration:
