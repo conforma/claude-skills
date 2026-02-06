@@ -4,11 +4,11 @@
 # description: >-
 #   Tests for the package_sources policy rule.
 #
-package policy.package_sources_test
+package package_sources_test
 
 import rego.v1
 
-import data.policy.package_sources
+import data.package_sources
 
 # =============================================================================
 # Mock Data Helpers

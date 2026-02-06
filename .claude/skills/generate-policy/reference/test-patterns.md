@@ -12,18 +12,18 @@ For Rego lint compliance, test files must be in the same directory as the rule f
 
 | Package | File Path |
 |---------|-----------|
-| `policy.package_sources_test` | `<name>/policy/package_sources/package_sources_test.rego` |
+| `package_sources_test` | `<name>/policy/package_sources/package_sources_test.rego` |
 
 - Test file: `<rule_name>_test.rego` (same directory as the rule)
-- Package: `policy.<rule_name>_test` (e.g., `policy.package_sources_test`)
+- Package: `<rule_name>_test` (e.g., `package_sources_test`)
 
 ### Structure
 ```rego
-package policy.<rule_name>_test
+package <rule_name>_test
 
 import rego.v1
 
-import data.policy.<rule_name>
+import data.<rule_name>
 
 # Test rules prefixed with test_
 test_<descriptive_name> if {

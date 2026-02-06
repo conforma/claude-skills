@@ -23,7 +23,12 @@
       "Bash(opa fmt:*)",
       "Bash(opa check:*)",
       "Bash(opa test:*)",
-      "Skill(generate-policy)"
+      "Skill(generate-policy)",
+      "Bash(while read line)",
+      "Bash(do echo \"$line\")",
+      "Bash(done)",
+      "Bash(echo:*)",
+      "Bash(test:*)"
     ]
   }
 }
