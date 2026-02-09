@@ -35,13 +35,13 @@ test_<descriptive_name> if {
 
 ```bash
 # Run all tests in directory
-opa test . -v
+ec opa test . -v
 
 # Run with coverage
-opa test . --coverage
+ec opa test . --coverage
 
 # Run specific tests
-opa test . -v --run "test_allowed"
+ec opa test . -v --run "test_allowed"
 ```
 
 ## Mock Data Patterns

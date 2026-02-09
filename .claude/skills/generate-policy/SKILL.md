@@ -36,7 +36,7 @@ When a user requests policy validation, generate these artifacts:
 1. **Gather requirements** - Ask what the user wants to validate
 2. **Prompt for required inputs** - See domain references for what to ask (e.g., `allowed_package_sources` for SBOM rules)
 3. **Generate artifacts** - Create files with directory matching package name (for Rego lint compliance)
-4. **VERIFY: Run OPA tests** - Run `opa test ./policy -v` and ensure ALL tests pass
+4. **VERIFY: Run OPA tests** - Run `ec opa test ./policy -v` and ensure ALL tests pass
 5. **VERIFY: Run EC validation** - If image provided, run `ec validate image` and verify expected results
 6. **Report results** - Only after verification passes, provide the Conforma command and next steps
 
@@ -52,7 +52,7 @@ After creating all Rego files, you MUST run the tests:
 
 ```bash
 cd <policy_set_directory>
-opa test ./policy -v --ignore '*.rego' --ignore 'lib/*'
+ec opa test ./policy -v --ignore '*.rego' --ignore 'lib/*'
 ```
 
 **Note**: We exclude `lib/*` because `sbom.rego` uses `ec.oci.blob()` which OPA can't parse.
