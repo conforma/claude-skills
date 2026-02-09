@@ -1,0 +1,33 @@
+# Rule Data Configuration
+#
+# This file contains configuration data for policy rules.
+# It is referenced from policy.yaml via the data: field and accessed
+# in Rego rules via data.rule_data.
+#
+# Place this file in the data/ directory of your policy set.
+
+rule_data:
+  # Example: Approved container registries
+  # approved_registries:
+  #   - "quay.io"
+  #   - "registry.redhat.io"
+  #   - "registry.access.redhat.com"
+  #   - "gcr.io/distroless"
+
+  # Example: Allowed package sources (regex patterns)
+  # allowed_package_sources:
+  #   - "^https://registry\\.npmjs\\.org/"
+  #   - "^https://proxy\\.golang\\.org/"
+
+  # Example: Disallowed packages
+  # disallowed_packages:
+  #   - "pkg:npm/malicious-package"
+  #   - "pkg:pypi/unsafe-lib"
+
+  # Example: Allowed licenses (SPDX IDs)
+  # allowed_licenses:
+  #   - "MIT"
+  #   - "Apache-2.0"
+  #   - "BSD-3-Clause"
+
+  # Add your rule data configuration below:

@@ -33,7 +33,8 @@ The skill will prompt you for any missing information.
 |----------|----------|-------------|
 | Policy rule | `<policy_set>/policy/<rule>/<rule>.rego` | Rego v1 validation rule |
 | Tests | `<policy_set>/policy/<rule>/<rule>_test.rego` | Comprehensive test coverage |
-| Policy config | `<policy_set>/policy.yaml` | Conforma configuration with ruleData |
+| Policy config | `<policy_set>/policy.yaml` | Conforma configuration |
+| Rule data | `<policy_set>/data/*.yaml` | Configuration data for rules |
 | Public key | `<policy_set>/cosign.pub` | Public key for signature verification |
 | Conforma command | (displayed) | Ready-to-run validation command |
 
@@ -87,7 +88,11 @@ ec validate image \
    registry_validation/
    ├── policy.yaml
    ├── cosign.pub
+   ├── data/
+   │   └── approved_registries.yaml
    └── policy/
+       ├── lib/
+       │   └── sbom.rego
        └── approved_image_registries/
            ├── approved_image_registries.rego
            └── approved_image_registries_test.rego

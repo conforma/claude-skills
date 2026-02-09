@@ -34,9 +34,8 @@ Each source defines a group of policy rules evaluated together.
 ```yaml
 sources:
   - name: <string>       # Optional source name
+    data: []             # Required for rules using rule_data: list of data URLs
     policy: []           # Required: list of policy URLs
-    data: []             # Optional: list of data URLs
-    ruleData: {}         # Optional: arbitrary data for rules
     config: {}           # Optional: source-level include/exclude
     volatileConfig: {}   # Optional: time-based include/exclude
 ```
@@ -51,27 +50,54 @@ Policy URLs use go-getter style syntax:
 | Git | `git::URL//path?ref=REF` | `git::https://github.com/org/repo.git//release_policies/policy/package_sources?ref=main` |
 | OCI | `oci::REGISTRY/IMAGE:TAG` | `oci::quay.io/org/policy:latest` |
 
-### ruleData
+### Data Files
 
-Arbitrary data passed to policy rules via `data.rule_data`:
+Rule data is stored in separate YAML files and referenced via the `data:` field. These files contain configuration passed to policy rules via `data.rule_data`.
 
+**Directory structure:**
+```
+<policy_set>/
+├── policy.yaml
+├── data/
+│   └── config.yaml    # Contains rule_data
+└── policy/
+    └── ...
+```
+
+**policy.yaml:**
 ```yaml
-ruleData:
+sources:
+  - name: my-rules
+    data:
+      - ./data    # Directory containing YAML files with rule_data
+    policy:
+      - ./policy/my_rule
+```
+
+**data/config.yaml:**
+```yaml
+rule_data:
+  approved_registries:
+    - "quay.io"
+    - "registry.redhat.io"
   allowed_package_sources:
-    - type: npm
-      patterns:
-        - "^https://registry\\.npmjs\\.org/"
-    - type: golang
-      patterns:
-        - "^https://proxy\\.golang\\.org/"
+    - "^https://registry\\.npmjs\\.org/"
+    - "^https://proxy\\.golang\\.org/"
   disallowed_packages:
     - "pkg:npm/malicious-package"
 ```
 
 Accessed in Rego as:
 ```rego
-allowed := data.rule_data.allowed_package_sources
+approved := object.get(data.rule_data, "approved_registries", [])
+allowed := object.get(data.rule_data, "allowed_package_sources", [])
 ```
+
+**Benefits of external data files:**
+- Separates configuration from policy logic
+- Easier to update without modifying policy.yaml
+- Can have multiple data files for different configuration aspects
+- Supports version control and review of configuration changes
 
 ### config (Source-Level)
 
@@ -165,22 +191,18 @@ identity:
 
 ## Complete Example
 
+**policy.yaml:**
 ```yaml
 name: production-policy
 description: Policy for production releases
 
 sources:
   - name: release-rules
+    data:
+      - ./data    # Contains rule_data YAML files
     policy:
-      - git::https://github.com/org/ec-policy.git//policy/release?ref=v1.0
-    ruleData:
-      allowed_package_sources:
-        - type: npm
-          patterns:
-            - "^https://registry\\.npmjs\\.org/"
-        - type: golang
-          patterns:
-            - "^https://proxy\\.golang\\.org/"
+      - ./policy/lib
+      - ./policy/package_sources
     config:
       include:
         - "@redhat"
@@ -194,6 +216,14 @@ publicKey: |
   -----END PUBLIC KEY-----
 
 rekorUrl: https://rekor.sigstore.dev
+```
+
+**data/allowed_sources.yaml:**
+```yaml
+rule_data:
+  allowed_package_sources:
+    - "^https://registry\\.npmjs\\.org/"
+    - "^https://proxy\\.golang\\.org/"
 ```
 
 ## Volatile Configuration

@@ -16,6 +16,11 @@ sources:
   - # Optional name for this source
     name: <source_name>
 
+    # List of data source URLs containing rule_data YAML files
+    # Data files are loaded and made available via data.rule_data in Rego
+    data:
+      - ./data    # Directory containing YAML files with rule_data
+
     # List of policy source URLs (go-getter style)
     # Each rule has its own directory under policy/ matching the package name
     # Examples:
@@ -23,27 +28,16 @@ sources:
     #   - Git repo: git::https://github.com/org/repo.git//release_policies/policy/package_sources?ref=main
     #   - OCI image: oci::quay.io/org/policy:latest
     policy:
+      - ./policy/lib            # SBOM access library (required for SBOM rules)
       - ./policy/<rule_name>    # Directory under policy/ matches package name
-
-    # Optional: List of data source URLs
-    # data:
-    #   - <data_source_url>
-
-    # Optional: Arbitrary rule data visible to policy rules
-    ruleData:
-      # Example: allowed package sources for SBOM validation
-      allowed_package_sources:
-        - type: <package_type>  # e.g., npm, golang, pypi
-          patterns:
-            - "<regex_pattern>"  # e.g., "^https://registry\\.npmjs\\.org/"
 
     # Optional: Configure which rules to include/exclude from this source
     config:
       # Rules to include (overrides excludes)
       # Use @collection_name to include a collection
       include:
-        - "@<collection_name>"  # e.g., @redhat, @minimal, @slsa3
-        # - "<package>.<rule_name>"  # Include specific rule
+        - "<package>.<rule_name>"  # Include specific rule
+        # - "@<collection_name>"  # e.g., @redhat, @minimal, @slsa3
 
       # Rules to exclude (won't block success if they fail)
       # exclude:

@@ -27,7 +27,8 @@ When a user requests policy validation, generate these artifacts:
 |----------|-------------|
 | Policy rule (`.rego`) | Standalone Rego v1 rule |
 | Test file (`_test.rego`) | Comprehensive tests for the rule |
-| Policy config (`policy.yaml`) | Conforma configuration with ruleData |
+| Policy config (`policy.yaml`) | Conforma configuration referencing data files |
+| Data file (`data/*.yaml`) | Rule data configuration (e.g., allowed registries) |
 | Conforma command | Ready-to-run `ec validate image` command |
 | Instructions | Clear next steps for the user |
 
@@ -104,6 +105,8 @@ For Rego lint compliance, directory path must match package name. Use a descript
 <descriptive_name>/                # e.g., release_policies, sbom_validation
 ├── policy.yaml                    # Conforma configuration
 ├── cosign.pub                     # Public key (if provided)
+├── data/                          # Rule data files (referenced from policy.yaml)
+│   └── <rule_data>.yaml           # YAML file with rule_data configuration
 └── policy/                        # Contains all rule directories
     ├── lib/                       # Shared library (required for SBOM rules)
     │   └── sbom.rego              # SBOM access library
@@ -117,6 +120,8 @@ For Rego lint compliance, directory path must match package name. Use a descript
 release_policies/
 ├── policy.yaml
 ├── cosign.pub
+├── data/
+│   └── allowed_sources.yaml           # rule_data for allowed package sources
 └── policy/
     ├── lib/
     │   └── sbom.rego                  # package lib.sbom
@@ -133,10 +138,12 @@ For any rule that validates SBOM data, you MUST:
 
 1. **Create the SBOM library** at `policy/lib/sbom.rego` using the [SBOM Library Template](templates/lib-sbom.rego)
 
-2. **Include the lib in policy.yaml**:
+2. **Include the lib and data in policy.yaml**:
    ```yaml
    sources:
      - name: my-rules
+       data:
+         - ./data                # Rule data files
        policy:
          - ./policy/lib          # SBOM access library
          - ./policy/my_rule
@@ -212,6 +219,7 @@ ec validate image \
 - [SBOM Rule Template](templates/sbom-rule.rego) - Package source validation example
 - [SBOM Library Template](templates/lib-sbom.rego) - Standalone SBOM access library (REQUIRED for SBOM rules)
 - [Policy Config Template](templates/policy.yaml) - Conforma policy configuration
+- [Rule Data Template](templates/rule-data.yaml) - Data file for rule configuration
 
 ---
 
@@ -256,15 +264,32 @@ name: <policy_name>
 description: <description>
 sources:
   - name: <source_name>
+    data:
+      - ./data                  # Directory containing rule_data YAML files
     policy:
       - ./policy/lib            # SBOM library (required for SBOM rules)
       - ./policy/<rule_name>    # Reference each rule directory under policy/
-    ruleData:
-      allowed_package_sources:
-        - "^https://registry\\.npmjs\\.org/"
     config:
       include:
         - "<rule_name>.short_name"
+```
+
+### Data File Format
+
+Rule data is stored in separate YAML files under the `data/` directory:
+
+```yaml
+# data/allowed_sources.yaml
+rule_data:
+  allowed_package_sources:
+    - "^https://registry\\.npmjs\\.org/"
+    - "^https://proxy\\.golang\\.org/"
+```
+
+The data is accessed in Rego rules via `data.rule_data`:
+
+```rego
+allowed := object.get(data.rule_data, "allowed_package_sources", [])
 ```
 
 ### SBOM Quick Reference
