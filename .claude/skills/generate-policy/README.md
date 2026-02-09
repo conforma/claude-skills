@@ -96,7 +96,7 @@ ec validate image \
 4. **Run the tests**
    ```bash
    cd registry_validation
-   opa test . -v
+   ec opa test . -v
    ```
 
 5. **Run the validation**
@@ -118,5 +118,5 @@ Test the generated rules with OPA from within the policy set directory:
 
 ```bash
 cd <policy_set>
-opa test . -v
+ec opa test . -v
 ```
