@@ -28,7 +28,9 @@
       "Bash(do echo \"$line\")",
       "Bash(done)",
       "Bash(echo:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(ec opa test:*)",
+      "Bash(ec validate image:*)"
     ]
   }
 }
