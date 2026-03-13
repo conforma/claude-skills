@@ -30,7 +30,8 @@
       "Bash(echo:*)",
       "Bash(test:*)",
       "Bash(ec opa test:*)",
-      "Bash(ec validate image:*)"
+      "Bash(ec validate image:*)",
+      "Bash(head -20 registry_validation/text_report.txt | xxd | head -40)"
     ]
   }
 }

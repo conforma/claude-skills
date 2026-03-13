@@ -1,7 +1,7 @@
 ---
 description: Parse a log file and debug all EC policy violations using the ec-policy-debugging skill
-argument-hint: <log-file-path> [setup-directory]
-allowed-tools: Read, Bash, Glob, Grep, Task
+argument-hint: <log-source> [--policy <policy-config>] [--setup-dir <directory>]
+allowed-tools: Read, Bash, Glob, Grep, Task, WebFetch
 ---
 
 # EC Debug All Violations
@@ -11,14 +11,66 @@ Parse a Conforma validation log file, extract all violations, and debug each uni
 ## Instructions
 
 Arguments in `$ARGUMENTS`:
-- **First argument** (required): Path to the log file
-- **Second argument** (optional): Path to the setup directory created by `/ec-setup`
+- **First argument** (required): Log source - one of:
+  - **Local file**: `./path/to/log.txt` or `/absolute/path/to/log.txt`
+  - **Kubernetes TaskRun**: `taskrun://namespace/taskrun-name`
+- **--policy** (optional): Path or URL to policy.yaml config file
+  - Local file: `./policy.yaml` or `/path/to/policy.yaml`
+  - GitHub URL: `https://github.com/org/repo/blob/main/policy.yaml`
+- **--setup-dir** (optional): Path to setup directory created by `/ec-setup`
 
-If no log file is provided, prompt the user for the log file path.
+If no log source is provided, prompt the user for it.
 
-## Step 1: Parse the Log File
+## Supported Log Formats
 
-Read the log file and extract the JSON validation output. The JSON block starts with `{"success"` and contains all validation results.
+This skill supports two log formats:
+
+### 1. TaskRun/PipelineRun Format (JSON)
+Output from Tekton taskRuns or pipelineRuns. Contains JSON starting with `{"success"` with structure:
+- `components[].violations[].metadata.code` - Violation codes
+- `components[].violations[].msg` - Violation messages
+- `components[].warnings[].metadata.code` - Warning codes
+
+### 2. Text Output Format
+Human-readable output from `ec validate` or similar tools. Identified by:
+- Header with `Success:`, `Result:`, `Violations:` counts
+- `Components:` section listing images
+- `Results:` section with entries like:
+  ```
+  ✕ [Violation] package.rule_name
+    ImageRef: ...
+    Reason: ...
+    Title: ...
+    Description: ...
+    Solution: ...
+  ```
+
+The summarize script auto-detects the format.
+
+## Step 1: Fetch and Parse the Log
+
+### Determine log source type
+
+Parse the first argument to determine the source:
+
+**If `taskrun://namespace/taskrun-name`**:
+1. Extract namespace and taskrun name from the URI
+2. Fetch logs from the Kubernetes cluster:
+   ```bash
+   # Get the pod name for the taskrun
+   POD=$(kubectl get taskrun <taskrun-name> -n <namespace> -o jsonpath='{.status.podName}')
+
+   # Fetch logs from the step-detailed-report container (contains the violations report)
+   kubectl logs -n <namespace> $POD -c step-detailed-report
+   ```
+3. Save the output to a temporary file for processing
+
+**If local file path**:
+1. Read the file directly
+
+### Parse the log content
+
+The script auto-detects whether this is JSON or text format.
 
 Use the summarize script to get an overview:
 ```bash
@@ -27,9 +79,11 @@ python3 .claude/skills/ec-policy-debugging/summarize_violations.py <LOG_FILE>
 
 ## Step 2: Extract Unique Violation Codes
 
-From the JSON output, collect all unique violation codes from both:
-- `components[].violations[].metadata.code` - Hard failures
-- `components[].warnings[].metadata.code` - Warnings
+Collect all unique violation codes. The format determines how to extract them:
+
+**JSON format**: Extract from `components[].violations[].metadata.code` and `components[].warnings[].metadata.code`
+
+**Text format**: Extract from `✕ [Violation] <code>` and `! [Warning] <code>` lines in the Results section
 
 Group violations by their code (e.g., `olm.unmapped_references`, `rpm_packages.unique_version`).
 
@@ -37,7 +91,36 @@ Group violations by their code (e.g., `olm.unmapped_references`, `rpm_packages.u
 
 The policy source is needed to read rule definitions, metadata, and tests. Find it using this priority order:
 
-### If setup directory was provided as second argument:
+### If --policy was provided:
+
+1. **Fetch the policy config file**:
+   - **Local file**: Read directly with the Read tool
+   - **GitHub URL**: Convert to raw URL and fetch with WebFetch
+     - `https://github.com/org/repo/blob/main/policy.yaml` → `https://raw.githubusercontent.com/org/repo/main/policy.yaml`
+
+2. **Parse the policy.yaml** to extract policy sources from `sources[].policy`:
+   ```yaml
+   sources:
+     - policy:
+         - ./policy/lib                    # Local path
+         - oci::quay.io/org/policy:latest  # OCI bundle
+         - git::https://github.com/...     # Git URL
+   ```
+
+3. **Pull OCI policy bundles** if needed:
+   ```bash
+   # Create a working directory for policies
+   mkdir -p .ec-debug-policies
+
+   # For each OCI source, pull it
+   conftest pull --policy .ec-debug-policies <oci-url>
+   ```
+
+4. **For local paths**: Resolve relative to the policy.yaml location
+   - If policy.yaml is from GitHub, construct the raw URL for the policy directory
+   - If policy.yaml is local, use the relative path from its directory
+
+### If --setup-dir was provided:
 Use `<setup-directory>/policy/` directly. The `/ec-setup` command creates a `policy/` subdirectory containing the pulled OCI bundle with `policy/release/...` structure.
 
 ### Otherwise, search in this order:
@@ -58,20 +141,28 @@ Tell the user:
 ```
 No policy source code found. To debug violations, I need access to the policy Rego files.
 
-Option 1: Run /ec-setup first
+Option 1: Provide the policy config
+  /ec-debug-violations <log-file> --policy <policy.yaml or GitHub URL>
+  This will read the config and pull the necessary policy bundles.
+
+Option 2: Run /ec-setup first
   /ec-setup <log-file-path>
   This will extract the policy configuration and pull the OCI policy bundle.
 
-Option 2: Specify the setup directory
-  /ec-debug-violations <log-file> <setup-directory>
+Option 3: Specify the setup directory
+  /ec-debug-violations <log-file> --setup-dir <directory>
 
-Option 3: Pull policies manually
+Option 4: Pull policies manually
   conftest pull --policy . oci::quay.io/enterprise-contract/ec-release-policy:konflux
   This creates ./policy/release/... structure.
 ```
 
-### Store the policy path
-Once found, store the policy base path (e.g., `./policy` or `./release-policies-myimage-amd64/policy`) for use in subsequent steps. All rule lookups will use `<policy-base>/release/<package>/`.
+### Store the policy paths
+Once found, store all policy base paths for use in subsequent steps. Policy rules may come from multiple sources:
+- OCI bundles typically have `<pulled-dir>/release/<package>/` structure
+- Local policies may have `<path>/<package>/` structure
+
+When looking up a rule, search across all policy paths.
 
 ## Step 4: Debug Each Violation
 
@@ -85,15 +176,23 @@ Split the code into `<package>.<short_name>`:
 - Short name: Second part (e.g., `unmapped_references`, `unique_version`)
 
 ### 4b. Find the rule source file
+Search across all policy paths for the package directory:
 ```bash
-# Look in the policy directory for the package
-ls <POLICY_BASE>/release/<package>/
+# For OCI-pulled policies (have release/ structure)
+ls <POLICY_PATH>/release/<package>/
+
+# For local policies (direct structure)
+ls <POLICY_PATH>/<package>/
+
+# Or search across all paths
+find <POLICY_PATHS> -type d -name "<package>" 2>/dev/null
 ```
 
 ### 4c. Read the rule metadata
 Find the METADATA block for the specific rule by searching for the short_name:
 ```bash
-grep -B 30 "short_name: <short_name>" <POLICY_BASE>/release/<package>/<package>.rego
+# Search in the package directory found in 4b
+grep -B 30 "short_name: <short_name>" <PACKAGE_DIR>/<package>.rego
 ```
 
 Extract and present:
@@ -105,7 +204,7 @@ Extract and present:
 ### 4d. Read the rule tests
 Find test cases that show expected behavior:
 ```bash
-grep -A 30 "test.*<short_name>" <POLICY_BASE>/release/<package>/<package>_test.rego
+grep -A 30 "test.*<short_name>" <PACKAGE_DIR>/<package>_test.rego
 ```
 
 Explain what the tests reveal about:
@@ -145,8 +244,14 @@ ROOT CAUSE ANALYSIS:
   violation is occurring. What data is missing, malformed, or unexpected?>
 
 RECOMMENDED ACTIONS:
-  1. <Specific action based on solution and analysis>
-  2. <Additional steps if needed>
+  <Based on ACTUAL violation data, not generic rule metadata suggestions.
+  Only recommend what is needed to fix the specific violations found.
+
+  For example:
+  - If violations show 2 unapproved registries, only list those 2 - not a
+    generic list of 4 registries from the rule's solution text.
+  - If a specific package version is missing, name that exact package.
+  - Extract the minimum required fix from the actual violation terms/messages.>
 
 INVESTIGATION COMMANDS:
   # Commands to investigate further
@@ -168,6 +273,13 @@ After analyzing all violations, provide:
 5. **Quick wins**: Violations that appear easiest to fix based on the solutions
 
 ## Additional Context
+
+### Recommendations must be data-driven
+When providing recommended actions:
+- Extract specific values from the actual violation messages and `term` fields
+- Do NOT copy generic solution text from rule metadata verbatim
+- Only recommend the minimum changes needed to fix the actual violations
+- If a rule suggests "add X, Y, Z, or W" but violations only involve X and Y, only recommend X and Y
 
 ### Violation severity levels
 - **Violations** (failures): Block the pipeline, must be fixed
