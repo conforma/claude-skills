@@ -51,17 +51,35 @@ When you encounter a violation:
 
 - [Full debugging reference](debugging.md) - Complete methodology and commands
 - `summarize_violations.py` - Script to summarize violations from logs
+- `summarize_violations_test.py` - Tests for the summarize script
 
 ## Summarize Violations
 
 ```bash
-./summarize_violations.py <LOG_FILE>
+python3 summarize_violations.py <LOG_FILE>
 ```
+
+Supports two log formats:
+- **JSON format**: TaskRun/PipelineRun output with `{"success"...` structure
+- **Text format**: Human-readable output with `Results:` section
 
 Or quick count:
 ```bash
 grep -oE '"code":\s*"[^"]+"' <LOG_FILE> | sort | uniq -c | sort -rn
 ```
+
+## Testing
+
+Run tests for the summarize script:
+```bash
+pytest .claude/skills/ec-policy-debugging/ -v
+```
+
+Test coverage:
+- JSON format parsing (9 tests)
+- Text format parsing (6 tests)
+- Format auto-detection (3 tests)
+- Edge cases (6 tests)
 
 ## Find Rule from Violation Code
 

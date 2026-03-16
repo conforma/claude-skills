@@ -61,7 +61,7 @@ Parse the first argument to determine the source:
    POD=$(kubectl get taskrun <taskrun-name> -n <namespace> -o jsonpath='{.status.podName}')
 
    # Fetch logs from the step-detailed-report container (contains the violations report)
-   kubectl logs -n <namespace> $POD -c step-detailed-report
+   kubectl logs -n <namespace> "$POD" -c step-detailed-report
    ```
 3. Save the output to a temporary file for processing
 

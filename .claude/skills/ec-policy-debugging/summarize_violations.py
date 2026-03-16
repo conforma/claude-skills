@@ -130,7 +130,7 @@ def parse_text_format(content):
     in_results = False
     current_block = None
 
-    for i, line in enumerate(lines):
+    for line in lines:
         if line.startswith('Results:'):
             in_results = True
             continue
