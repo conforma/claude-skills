@@ -52,8 +52,9 @@ The Renovate config is a strong heuristic, not gospel truth. Always explain the 
 
 **Detection rules:**
 1. Match on `(repo, base_branch, dependency_group)`:
-   - Extract the dependency group from the Renovate head branch name: `renovate/<group-name>` → group is `<group-name>`
-   - Examples: `renovate/go-modules`, `renovate/github-actions`, `renovate/go-billy-5.x`
+   - Extract the dependency group from the **PR title** (preferred) or Renovate head branch name if available
+   - From titles: "Update go modules ..." → `go-modules`, "Update module github.com/go-git/go-billy/v5 ..." → `go-billy`, "Update github actions ..." → `github-actions`
+   - **Disambiguation:** Match the full dependency name, not substrings. `golang` (Go compiler) and `golangci-lint` (linter) are different groups. `go-git` and `go-billy` are different groups even though both are go-git org packages.
 2. Compare versions from PR titles:
    - `(patch)` < `(minor)` < `(major)`
    - Explicit versions like `v5.8.0` < `v5.9.0` — use semver comparison
@@ -63,11 +64,11 @@ The Renovate config is a strong heuristic, not gospel truth. Always explain the 
 
 ### Priority 3: Security Update
 
-**Signal:** Title contains `[SECURITY]` or `[security]` (case-insensitive), or PR has a `security` label.
+**Signal:** Title contains `[SECURITY]` (case-insensitive — some repos like `go-gather` use lowercase `[security]`), or PR has a `security` label.
 
 **Action:** Approve + enable auto-merge.
 
-**CI reclassification:** If a security PR has failing CI for 7+ days, reclassify it as "Needs review" (Priority 8) with reason "Security update with CI failing since {date} — requires manual investigation".
+**CI reclassification:** If a security PR has failing CI for 7+ days, reclassify it as "Needs review" (Priority 8) with reason "Security update with CI failing {age} days — requires manual investigation". Use `age_days` (from `createdAt`) as a proxy for CI failure duration.
 
 ### Priority 4: Go Version Bump
 
@@ -127,11 +128,11 @@ skopeo inspect docker://docker.io/library/golang:<version> 2>&1
 
 **Action:** Approve + enable auto-merge. CI status is also re-checked at action time (in the act phase).
 
-**CI reclassification:** If a PR would be routine but has failing CI for 7+ days, reclassify it as "Needs review" (Priority 8) with reason "CI has been failing since {date}".
+**CI reclassification:** If a PR would be routine but has failing CI for 7+ days, reclassify it as "Needs review" (Priority 8) with reason "CI failing, PR open {age} days". Use `age_days` as a proxy for CI failure duration.
 
 ### Priority 7: Stale
 
-**Signal:** PR has been open for 120+ days (based on `createdAt`) with no new commits or reviews.
+**Signal:** PR has been open for 120+ days (based on `createdAt`). Use age as the primary signal — checking for recent commits or reviews is optional and rarely changes the outcome for PRs this old.
 
 **Action:** Recommend close. Renovate will re-create the PR with the latest version after closure.
 
@@ -157,6 +158,24 @@ PRs on the same `(repo, base_branch)` that update the same dependency ecosystem 
 **Detection:** Group PRs by `(repo, base_branch, ecosystem)`. Groups with 2+ PRs are cascade groups.
 
 **Recommended merge order within a cascade:** Security updates first, then patches, then minor, then major. Within the same update type, smaller PRs first.
+
+## API Constraints
+
+**`gh search prs` does not support `headRefName` or `baseRefName` fields.** Extract the base branch from:
+1. **Labels (primary):** Renovate adds `{{baseBranch}}` as a label (e.g., `main`, `release-v0.8`)
+2. **Title parenthetical (fallback):** e.g., `(release-v0.8)` at the end of the title
+
+**Konflux author search may fail.** The `red-hat-konflux` bot account cannot always be searched via `--author`. Fall back to label-based search or skip with a warning.
+
+**CI status fetching:** Only fetch CI for security and routine PRs (the categories needing CI reclassification). Do not fetch CI for all PRs — it's unnecessary API overhead.
+
+## Report Location
+
+Reports are written to `.claude/reports/`:
+- `.claude/reports/renovate-triage-{YYYY-MM-DD}.json` — structured data for `/renovate-act`
+- `.claude/reports/renovate-triage-{YYYY-MM-DD}.md` — human-readable report
+
+This directory is gitignored. The `/renovate-act` command reads the latest JSON from this directory.
 
 ## Close Comment Templates
 

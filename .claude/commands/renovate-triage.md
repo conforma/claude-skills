@@ -41,62 +41,101 @@ Store these patterns — they're used in Step 5 for abandoned branch detection.
 
 Run these searches to find all open automated PRs. If `--repo` was specified, add `--repo <owner/repo>` to each command instead of `--owner`.
 
+**Note:** `gh search prs` does not support `headRefName` or `baseRefName` fields. Use the supported fields below and extract branch info from labels and titles (see "Extracting base branch" below).
+
 ```bash
 # Renovate PRs across conforma org
 gh search prs --owner conforma --author "app/renovate" --state open --limit 200 \
-  --json repository,title,number,url,createdAt,updatedAt,labels,headRefName,baseRefName
-
-# Konflux PRs across conforma org
-gh search prs --owner conforma --author "app/red-hat-konflux" --state open --limit 200 \
-  --json repository,title,number,url,createdAt,updatedAt,labels,headRefName,baseRefName
+  --json repository,title,number,url,createdAt,updatedAt,labels
 
 # Renovate PRs across enterprise-contract org
 gh search prs --owner enterprise-contract --author "app/renovate" --state open --limit 200 \
-  --json repository,title,number,url,createdAt,updatedAt,labels,headRefName,baseRefName
+  --json repository,title,number,url,createdAt,updatedAt,labels
 ```
+
+**Konflux PRs:** The `red-hat-konflux` bot account cannot be searched via `gh search prs --author` (GitHub returns a "users cannot be searched" error). Use a label-based fallback instead:
+
+```bash
+# Try author search first; if it fails, fall back to label search
+gh search prs --owner conforma --author "red-hat-konflux" --state open --limit 200 \
+  --json repository,title,number,url,createdAt,updatedAt,labels 2>/dev/null \
+  || gh search prs --owner conforma --label "konflux" --state open --limit 200 \
+  --json repository,title,number,url,createdAt,updatedAt,labels
+```
+
+If the Konflux search fails entirely, log a warning and continue with Renovate PRs only.
 
 **Pagination check:** If any query returns exactly 200 results, results may be truncated. Log a warning that will appear in the report summary.
 
+### Extracting base branch
+
+Since `gh search prs` does not return ref names, extract the base branch from two sources:
+
+1. **Labels (primary):** The shared Renovate config adds `{{baseBranch}}` as a label to every PR. Look for labels matching `main` or `release-*` patterns.
+2. **Title parenthetical (fallback):** Renovate titles end with the branch in parentheses, e.g., `Update go modules (release-v0.8) (patch)`. Extract the branch from the last parenthetical that matches `main` or `release-*`.
+
+If neither source yields a branch, set `base_branch` to `"unknown"` and skip abandoned-branch detection for that PR.
+
 Merge all results into a single list. For each PR, record:
 - `number`, `repo` (nameWithOwner), `title`, `url`
-- `base_branch` (baseRefName), `head_branch` (headRefName)
+- `base_branch` (extracted from labels or title — see above)
 - `author` (the bot name: "renovate" or "red-hat-konflux")
 - `age_days` (calculated from createdAt to now)
 - `labels` (array of label names)
 - `createdAt`, `updatedAt`
 
-## Step 4: Fetch CI Status
-
-For each PR, fetch its CI status:
-
-```bash
-gh pr view <NUMBER> --repo <REPO> --json statusCheckRollup,updatedAt
-```
-
-Record:
-- `ci_status`: "passing", "failing", "pending", or "unknown"
-- `ci_failing_since`: If CI is failing, estimate how long by checking the PR's `updatedAt` and check suite timestamps. If failing for 7+ days, this will trigger reclassification in categorization.
-
-If there are many PRs, present a progress update: "Fetching CI status... ({n} of {total})"
-
-## Step 5: Categorize Each PR
+## Step 4: Categorize Each PR
 
 Apply the categorization rules from the renovate-triage SKILL.md. Process each PR through the priority-ordered categories — first match wins.
 
-**CI reclassification:** After initial categorization, check PRs in "security" and "routine" categories. If any have CI failing for 7+ days, reclassify them as "needs_review" with a reason noting the CI failure.
-
 For each PR, evaluate in this order:
 
-1. **Abandoned branch**: Does `baseRefName` match any `baseBranchPattern`? Does the title end with `- abandoned`?
-2. **Superseded**: Is there another open PR in the results with the same `(repo, baseRefName)` and a matching Renovate branch group prefix in `headRefName`, targeting a higher version?
+1. **Abandoned branch**: Does `base_branch` match any active `baseBranchPattern`? Does the title end with `- abandoned`?
+2. **Superseded**: Is there another open PR in the results with the same `(repo, base_branch, dependency_group)` targeting a higher version? (See "Extracting dependency group" below.)
 3. **Security**: Does the title contain `[SECURITY]` or `[security]` (case-insensitive)? Does it have a `security` label?
 4. **Go version bump**: Does the title match Go version patterns (see SKILL.md Priority 4)?
 5. **Major**: Does the title start with `🚨` or contain `(major)`? Does it have a `major` label?
 6. **Routine patch/minor**: Does the title contain `(patch)` or `(minor)`?
-7. **Stale**: Is the PR older than 120 days?
+7. **Stale**: Is the PR older than 120 days (based on `createdAt`)?
 8. **Needs review**: Default category for everything else.
 
 If `--category` was specified, still categorize all PRs but only include the specified category in the report.
+
+### Extracting dependency group
+
+Since `headRefName` is not available from `gh search prs`, extract the dependency group from the **PR title**:
+
+- Titles containing "go modules" or "module github.com/..." → group by specific module name if singular (e.g., `go-billy`, `go-git`, `tektoncd-pipeline`, `helm`), or `go-modules` for grouped updates
+- Titles containing "github actions" → `github-actions`
+- Titles containing "npm dependencies" → `npm`
+- Titles containing "docker images" or "Docker tag" or "Docker digest" → `docker-images`
+- Titles matching Go version patterns → `go-version`
+
+**Disambiguation:** Be careful to distinguish similar tool names. For example, `golang` (the Go compiler) and `golangci-lint` (a linter) are different dependency groups even though both contain "golang". Match the full dependency name from the title, not substrings.
+
+## Step 5: Fetch CI Status (Security + Routine Only)
+
+**Only fetch CI status for PRs in the "security" and "routine" categories.** These are the only categories that need CI-based reclassification. Fetching CI for all PRs wastes API calls (e.g., 135 calls vs. ~37).
+
+For each security and routine PR:
+
+```bash
+gh pr view <NUMBER> --repo <REPO> --json statusCheckRollup --jq \
+  '.statusCheckRollup | [.[] | .conclusion // .status] | if length == 0 then "none" elif any(. == "FAILURE" or . == "ERROR") then "failing" elif all(. == "SUCCESS" or . == "NEUTRAL" or . == "SKIPPED") then "passing" else "pending" end'
+```
+
+Record `ci_status`: "passing", "failing", "pending", or "none".
+
+If there are many PRs, present a progress update: "Fetching CI status... ({n} of {total})"
+
+### CI Reclassification
+
+After fetching CI status, reclassify PRs where CI has been failing for 7+ days:
+
+- **Routine PRs** with failing CI and `age_days >= 7` → move to "needs_review" with reason "CI failing, PR open {age} days"
+- **Security PRs** with failing CI and `age_days >= 7` → move to "needs_review" with reason "Security update with CI failing {age} days — requires manual investigation"
+
+Use `age_days` as a proxy for CI failure duration. PRs less than 7 days old with failing CI are kept in their original category (CI may not have had time to stabilize).
 
 ## Step 6: Verify Go Version PRs
 
@@ -171,16 +210,16 @@ Write a JSON file with this structure:
           "number": 0,
           "repo": "<owner/repo>",
           "base_branch": "<branch>",
-          "head_branch": "<branch>",
           "title": "<title>",
           "age_days": 0,
           "url": "<url>",
-          "author": "<bot name>",
+          "dep_group": "<dependency group extracted from title>",
+          "ecosystem": "<ecosystem label>",
           "ci_status": "passing",
           "labels": [],
           "recommended_action": "close",
           "reason": "<specific reason for this PR>",
-          "cascade_group": null,
+          "reclassified_from": null,
           "go_verification": null,
           "outcome": null,
           "outcome_at": null
