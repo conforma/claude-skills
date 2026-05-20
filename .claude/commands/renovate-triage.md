@@ -106,7 +106,7 @@ If `--category` was specified, still categorize all PRs but only include the spe
 Since `headRefName` is not available from `gh search prs`, extract the dependency group from the **PR title**:
 
 - Titles containing "go modules" or "module github.com/..." → group by specific module name if singular (e.g., `go-billy`, `go-git`, `tektoncd-pipeline`, `helm`), or `go-modules` for grouped updates
-- Titles containing "github actions" → `github-actions`
+- Titles containing "GitHub Actions" → `github-actions`
 - Titles containing "npm dependencies" → `npm`
 - Titles containing "docker images" or "Docker tag" or "Docker digest" → `docker-images`
 - Titles matching Go version patterns → `go-version`
@@ -154,7 +154,7 @@ If there are many Go version PRs, present a progress update: "Verifying Go conta
 For each unique repo that has categorized PRs, check if it has a local `renovate.json` that overrides the shared config:
 
 ```bash
-gh api /repos/<OWNER>/<REPO>/contents/renovate.json --jq '.content' 2>/dev/null | base64 -d
+gh api /repos/<OWNER>/<REPO>/contents/renovate.json 2>/dev/null | jq -e -r '.content' | base64 -d
 ```
 
 If a repo has custom `baseBranchPatterns`, note this in the report. It may affect which branches are considered abandoned for that specific repo.
