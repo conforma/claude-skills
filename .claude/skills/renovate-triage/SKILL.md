@@ -1,6 +1,6 @@
 ---
 name: renovate-triage
-description: Triage and manage automated dependency update PRs (Renovate, Konflux) across the conforma GitHub org. Use when discussing Renovate PR backlog, dependency update management, or automated PR triage.
+description: Triage and manage automated dependency update PRs (Renovate, Konflux) across the conforma and enterprise-contract GitHub orgs. Use when discussing Renovate PR backlog, dependency update management, or automated PR triage.
 allowed-tools: Read, Bash, Glob, Grep, Task, Write, Edit
 ---
 
@@ -53,7 +53,7 @@ The Renovate config is a strong heuristic, not gospel truth. Always explain the 
 **Detection rules:**
 1. Match on `(repo, base_branch, dependency_group)`:
    - Extract the dependency group from the **PR title** (preferred) or Renovate head branch name if available
-   - From titles: "Update go modules ..." → `go-modules`, "Update module github.com/go-git/go-billy/v5 ..." → `go-billy`, "Update github actions ..." → `github-actions`
+   - From titles: "Update go modules ..." → `go-modules`, "Update module github.com/go-git/go-billy/v5 ..." → `go-billy`, "Update GitHub Actions ..." → `github-actions`
    - **Disambiguation:** Match the full dependency name, not substrings. `golang` (Go compiler) and `golangci-lint` (linter) are different groups. `go-git` and `go-billy` are different groups even though both are go-git org packages.
 2. Compare versions from PR titles:
    - `(patch)` < `(minor)` < `(major)`
@@ -149,7 +149,7 @@ PRs on the same `(repo, base_branch)` that update the same dependency ecosystem 
 **Ecosystem taxonomy:**
 - `go-modules`: PRs updating Go module dependencies (titles containing "go modules", "module github.com/...")
 - `go-version`: PRs updating Go version, toolchain, or Go Docker images
-- `github-actions`: PRs updating GitHub Actions (titles containing "github actions", action names)
+- `github-actions`: PRs updating GitHub Actions (titles containing "GitHub Actions", action names)
 - `docker-images`: PRs updating Docker/container image digests or tags
 - `npm`: PRs updating npm/Node.js dependencies
 - `konflux`: PRs updating Konflux references or RPM lockfiles

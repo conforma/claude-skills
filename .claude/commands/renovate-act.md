@@ -111,14 +111,14 @@ Action? (approve / close / skip)
 Before executing ANY action on a PR, fetch its current state:
 
 ```bash
-gh pr view <NUMBER> --repo <REPO> --json state,mergeable,statusCheckRollup,commits,updatedAt
+gh pr view <NUMBER> --repo <REPO> --json state,mergeable,statusCheckRollup,updatedAt
 ```
 
 Validate:
 1. **PR is still open**: `state` must be `"OPEN"`. If merged or closed, skip:
    > "PR #{number} is already {state}. Skipping."
 
-2. **No new commits**: Compare the latest commit SHA or `updatedAt` against what's in the report. If changed:
+2. **No new activity**: Compare `updatedAt` against the value stored in the triage report. If changed:
    > "PR #{number} has new activity since the triage report. Skipping — re-run /renovate-triage for updated data."
 
 3. **CI status** (for approve/merge actions only): Check `statusCheckRollup`. If CI is failing:
@@ -139,24 +139,35 @@ Do NOT execute any action. Instead, print:
   {If close: "Comment: {close comment template}"}
 ```
 
-Record `outcome: "dry_run"` in the report.
+Record `outcome: "dry_run"` for each PR in the report.
 
 ### If approve + auto-merge
 
+Build the approval message in a variable using a heredoc to avoid shell quoting issues with PR metadata that may contain quotes or special characters:
+
 ```bash
-gh pr review <NUMBER> --repo <REPO> --approve --body "Approved by automated triage: {reason}"
+body=$(cat <<'EOF'
+Approved by automated triage: {reason}
+EOF
+)
+gh pr review <NUMBER> --repo <REPO> --approve --body "$body"
 gh pr merge <NUMBER> --repo <REPO> --auto
 ```
 
-If either command fails, log the error and record `outcome: "failed"`.
-If both succeed, record `outcome: "merged"` (meaning auto-merge was enabled, not necessarily merged yet).
+If either command fails, log the error and record `outcome: "auto_merge_failed"`.
+If both succeed, record `outcome: "auto_merge_enabled"` (auto-merge is enabled, but the PR has not necessarily merged yet — it will merge when CI passes).
 
 ### If close
 
-Use the close comment template from SKILL.md based on the PR's category. Fill in the template variables ({branch}, {newer_pr}, {age}).
+Use the close comment template from SKILL.md based on the PR's category. Fill in the template variables ({branch}, {newer_pr}, {age}). Build the comment in a variable using a heredoc to avoid shell quoting issues:
 
 ```bash
-gh pr close <NUMBER> --repo <REPO> --comment "<filled close comment>"
+comment=$(cat <<'EOF'
+Closed by automated triage: this PR has been superseded by #123 which updates
+to a higher version of the same dependency group.
+EOF
+)
+gh pr close <NUMBER> --repo <REPO> --comment "$comment"
 ```
 
 If the command fails, log the error and record `outcome: "failed"`.
@@ -169,15 +180,15 @@ After processing each PR (or batch), update both report files:
 ### Update JSON
 
 Read the JSON file, find the PR entry by `(repo, number)`, set:
-- `outcome`: "merged", "closed", "skipped", "failed", or "dry_run"
+- `outcome`: "auto_merge_enabled", "closed", "skipped", "failed", or "dry_run"
 - `outcome_at`: current ISO 8601 timestamp
 
 Write the updated JSON back to the same file.
 
 ### Update Markdown
 
-Read the markdown file. Find the table row for this PR (match by PR number and repo). Append the outcome to the Action column:
-- `✅ Merged` (auto-merge enabled)
+Read the markdown file. Find the checkbox line for this PR (match by PR number and repo). Append the outcome:
+- `✅ Auto-merge enabled (pending CI)`
 - `❌ Closed`
 - `⏭️ Skipped ({reason})`
 - `💥 Failed ({error})`
@@ -194,7 +205,7 @@ After processing all categories, present a summary:
 
 | Action | Count |
 |--------|-------|
-| Approved + auto-merge | {n} |
+| Auto-merge enabled | {n} |
 | Closed | {n} |
 | Skipped | {n} |
 | Failed | {n} |

@@ -39,7 +39,7 @@ Store these patterns — they're used in Step 5 for abandoned branch detection.
 
 ## Step 3: Discover Open Automated PRs
 
-Run these searches to find all open automated PRs. If `--repo` was specified, add `--repo <owner/repo>` to each command instead of `--owner`.
+Run these searches to find all open automated PRs. If `--repo` was specified, replace the `--owner` flag with a query-based filter: `gh search prs --author "app/renovate" --state open repo:<owner/repo> --limit 200 ...`
 
 **Note:** `gh search prs` does not support `headRefName` or `baseRefName` fields. Use the supported fields below and extract branch info from labels and titles (see "Extracting base branch" below).
 
@@ -213,6 +213,8 @@ Write a JSON file with this structure:
           "title": "<title>",
           "age_days": 0,
           "url": "<url>",
+          "createdAt": "<ISO 8601 timestamp>",
+          "updatedAt": "<ISO 8601 timestamp>",
           "dep_group": "<dependency group extracted from title>",
           "ecosystem": "<ecosystem label>",
           "ci_status": "passing",
