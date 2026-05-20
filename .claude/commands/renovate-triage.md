@@ -53,17 +53,25 @@ gh search prs --owner enterprise-contract --author "app/renovate" --state open -
   --json repository,title,number,url,createdAt,updatedAt,labels
 ```
 
-**Konflux PRs:** The `red-hat-konflux` bot account cannot be searched via `gh search prs --author` (GitHub returns a "users cannot be searched" error). Use a label-based fallback instead:
+**Konflux PRs:** The `red-hat-konflux` bot account cannot be searched via `gh search prs --author` (GitHub returns a "users cannot be searched" error). Use a label-based fallback instead. Search both orgs:
 
 ```bash
-# Try author search first; if it fails, fall back to label search
+# conforma org — try author search first; if it fails, fall back to label search
 gh search prs --owner conforma --author "red-hat-konflux" --state open --limit 200 \
   --json repository,title,number,url,createdAt,updatedAt,labels 2>/dev/null \
   || gh search prs --owner conforma --label "konflux" --state open --limit 200 \
   --json repository,title,number,url,createdAt,updatedAt,labels
+
+# enterprise-contract org — same pattern
+gh search prs --owner enterprise-contract --author "red-hat-konflux" --state open --limit 200 \
+  --json repository,title,number,url,createdAt,updatedAt,labels 2>/dev/null \
+  || gh search prs --owner enterprise-contract --label "konflux" --state open --limit 200 \
+  --json repository,title,number,url,createdAt,updatedAt,labels
 ```
 
-If the Konflux search fails entirely, log a warning and continue with Renovate PRs only.
+**Label fallback guardrail:** When the label-based fallback is used, verify each PR's author is actually `red-hat-konflux` (e.g., via `gh pr view <NUMBER> --repo <REPO> --json author --jq '.author.login'`). Discard non-bot PRs before categorization to avoid triaging human-authored PRs.
+
+If the Konflux search fails entirely for both orgs, log a warning and continue with Renovate PRs only.
 
 **Pagination check:** If any query returns exactly 200 results, results may be truncated. Log a warning that will appear in the report summary.
 
