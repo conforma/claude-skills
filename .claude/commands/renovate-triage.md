@@ -164,7 +164,7 @@ If a repo has custom `baseBranchPatterns`, note this in the report. It may affec
 Group all PRs by `(repo, base_branch)`. Within each group, assign an ecosystem label based on the PR title and categorization:
 - Titles with "go modules", "module github.com/" → `go-modules`
 - Go version bump category → `go-version`
-- Titles with "github actions", action names → `github-actions`
+- Titles with "GitHub Actions", action names → `github-actions`
 - Titles with "Docker digest", "Docker tag" → `docker-images`
 - Titles with "npm dependencies" → `npm`
 - Titles with "Konflux references", "RPM lockfiles" → `konflux`
