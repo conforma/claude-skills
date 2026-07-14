@@ -226,7 +226,7 @@ att.statement.predicate.runDetails
 
 ```json
 {
-  "_type": "https://in-toto.io/Statement/v0.1",
+  "_type": "https://in-toto.io/Statement/v1",
   "predicateType": "https://slsa.dev/provenance/v1",
   "subject": [
     {
@@ -334,6 +334,7 @@ workspaces := att.statement.predicate.buildDefinition.externalParameters.runSpec
 # Get source material from resolved dependencies
 some material in att.statement.predicate.buildDefinition.resolvedDependencies
 startswith(material.uri, "git+")
+some digest_alg in object.keys(material.digest)
 source_ref := sprintf("%s@%s:%s", [material.uri, digest_alg, material.digest[digest_alg]])
 
 # Get build timestamps
@@ -346,7 +347,7 @@ finished := att.statement.predicate.runDetails.metadata.buildFinishedOn
 
 ### Identification
 - **Predicate type**: `https://slsa.dev/provenance/v0.2`
-- **Detection**: `att.statement.predicate.buildType in allowed_build_types` (v0.2 is identified by build type, not predicate type, in the ec-policies framework)
+- **Detection**: `att.statement.predicateType == "https://slsa.dev/provenance/v0.2"` for general provenance filtering; additionally filtered by `att.statement.predicate.buildType in allowed_build_types` for PipelineRun-specific attestations
 
 ### Key Structural Areas
 
@@ -488,6 +489,7 @@ tasks := att.statement.predicate.buildConfig.tasks
 # Get source material from materials
 some material in att.statement.predicate.materials
 startswith(material.uri, "git+")
+some digest_alg in object.keys(material.digest)
 source_ref := sprintf("%s@%s:%s", [material.uri, digest_alg, material.digest[digest_alg]])
 
 # Get build timestamps
