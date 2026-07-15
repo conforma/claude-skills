@@ -57,6 +57,34 @@ This command:
 4. Provides root cause analysis and recommended actions
 5. Generates a prioritized summary
 
+### `/mid-sprint-add`
+
+Tag a Jira issue as a mid-sprint addition with a structured comment.
+
+```
+/mid-sprint-add EC-1234 customer escalation from KFLUXSPRT-7872
+```
+
+This command:
+1. Looks up the current active sprint for the Conforma team
+2. Adds a `[MID-SPRINT-ADD] reason: ...` comment to the issue
+3. Moves the issue into the active sprint if not already there
+
+### `/sprint-report`
+
+Generate a report of all mid-sprint story additions.
+
+```
+/sprint-report          # Current/most recent sprint
+/sprint-report --post   # Generate and post to #team-conforma
+```
+
+This command:
+1. Queries all issues in the sprint
+2. Searches comments for `[MID-SPRINT-ADD]` tags
+3. Generates a report: which stories were added, by whom, when, and why
+4. Optionally posts to the team Slack channel
+
 ## Skills
 
 ### `ec-policy-debugging`
@@ -68,18 +96,26 @@ Core skill for investigating individual policy violations. Automatically invoked
 - "What does the `rpm_packages.unique_version` rule check?"
 - "Debug this EC validation error: [paste error]"
 
+### `mid-sprint-tracking`
+
+Track stories added to sprints after they've started. Provides the comment convention and configuration used by `/mid-sprint-add` and `/sprint-report`.
+
 ## File Structure
 
 ```
 .claude/
 ├── commands/
 │   ├── ec-setup.md              # /ec-setup command
-│   └── ec-debug-violations.md   # /ec-debug-violations command
+│   ├── ec-debug-violations.md   # /ec-debug-violations command
+│   ├── mid-sprint-add.md        # /mid-sprint-add command
+│   └── sprint-report.md         # /sprint-report command
 ├── skills/
-│   └── ec-policy-debugging/
-│       ├── SKILL.md             # Skill definition
-│       ├── debugging.md         # Full debugging reference
-│       └── summarize_violations.py  # Log parsing utility
+│   ├── ec-policy-debugging/
+│   │   ├── SKILL.md             # Skill definition
+│   │   ├── debugging.md         # Full debugging reference
+│   │   └── summarize_violations.py  # Log parsing utility
+│   └── mid-sprint-tracking/
+│       └── SKILL.md             # Mid-sprint tracking skill
 └── settings.local.json          # Claude Code settings
 ```
 
