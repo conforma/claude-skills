@@ -12,20 +12,20 @@ Assess a repository with AgentReady, triage the results, and apply fixes to impr
 
 The repo path is provided in `$ARGUMENTS`. If no argument is provided, prompt the user for the repo path.
 
-Resolve the path to an absolute path. All file operations in subsequent steps should use absolute paths rooted at the repo.
+Resolve the path to an absolute path and quote it in all shell commands (paths with spaces or special characters will break otherwise). All file operations in subsequent steps should use absolute paths rooted at the repo.
 
 ## Step 1: Assess
 
 Run the assessment and capture the JSON output:
 
 ```bash
-agentready assess <repo-path>
+agentready assess "$repo_path"
 ```
 
 Then parse the JSON results:
 
 ```bash
-cat <repo-path>/.agentready/assessment-latest.json
+cat "$repo_path/.agentready/assessment-latest.json"
 ```
 
 Extract from the JSON:
@@ -70,17 +70,19 @@ Ask the user which categories to proceed with.
 
 For each auto-fixable attribute the user approved, apply the fix. Explain each change as you make it.
 
+**Idempotency rule:** Before writing any file, check if it already exists. If it does, read it and merge rather than overwrite — do not duplicate entries in `.gitignore`, do not add a second `repos:` key to `.pre-commit-config.yaml`, do not clobber existing `.claude/settings.json` hooks or permissions. If a file already contains the target content, skip it.
+
 ### gitignore_completeness
-Read the assessment evidence to find which patterns are missing. Append them to `.gitignore` (create if missing). Group by category (build artifacts, editor files, OS files).
+Read the assessment evidence to find which patterns are missing. Check the existing `.gitignore` and only append patterns that are not already covered (including by glob patterns). Group by category (build artifacts, editor files, OS files).
 
 ### conventional_commits
-Create `.commitlintrc.yaml`:
+If `.commitlintrc.yaml` already exists, skip. Otherwise create it:
 ```yaml
 extends:
   - "@commitlint/config-conventional"
 ```
 
-If `.pre-commit-config.yaml` exists, append the commitlint hook. If it doesn't exist, create it with the repo's existing license header style:
+If `.pre-commit-config.yaml` exists, check whether it already has a commitlint hook before appending. If it doesn't exist, create it with the repo's existing license header style:
 ```yaml
 repos:
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
@@ -124,9 +126,9 @@ For each guided attribute the user wants to address, follow the guidance in the 
 
 ## Step 5: Re-assess and report
 
-Run `agentready assess <repo-path>` again. Parse the new JSON and compare against the original:
+Run `agentready assess "$repo_path"` again. Parse the new JSON and compare every attribute against the original:
 
-```
+```text
 Before: <score>/100 (<level>)
 After:  <score>/100 (<level>)
 
@@ -134,9 +136,15 @@ Improved:
   <attribute>: <old_score> → <new_score> (+<delta> pts)
   ...
 
+Regressed:
+  <attribute>: <old_score> → <new_score> (-<delta> pts, <reason>)
+  ...
+
 Still failing:
   <attribute>: <score>/100 (<reason it wasn't fixed>)
   ...
 ```
+
+If any attributes regressed, investigate immediately — a scaffolding fix may have broken existing config.
 
 If the score hasn't reached Gold (75), suggest what remaining changes would get there and the effort involved.
