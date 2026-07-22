@@ -5,7 +5,7 @@ allowed-tools: Read, Write, Bash, Glob, Grep, Task
 
 # Sprint Triage
 
-Review all Jira stories in the current sprint that are in New/To Do status. Assess each one and produce a categorized triage report the user can work from.
+Review all Jira stories in the current sprint that are in New/To Do status. Assess each one and produce a categorized triage report the user can work from. This is the first phase of the development loop — see [workflow-overview.md](~/.claude/docs/workflow-overview.md) for how triage connects to implementation and context capture.
 
 Read the reference document at `.claude/commands/sprint-triage-reference.md` before starting the assessment. It contains detection heuristics, ambiguity word lists, and the information availability framework you'll need for Step 3.
 
